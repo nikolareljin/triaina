@@ -9,6 +9,11 @@ triaina turns an ELEGOO Neptune 4 into a two-in-one machine: a normal FDM
 printer and a drag-knife vinyl cutter. A Raspberry Pi 3 Model B prepares cut
 files and switches modes.
 
+!!! tip "Sibling project: kinect-forge"
+    triaina makes the object. [kinect-forge](https://nikolareljin.github.io/kinect-forge/)
+    makes the model: it turns a Kinect v1 into a 3D scanner that exports meshes.
+    Scan a broken part there, print it here.
+
 | Part | What it does |
 |---|---|
 | [Klipper macros](reference/klipper-macros.md) | `CUTTER_MODE`, `PRINTER_MODE`, `CUT_PLUNGE`, `CUT_RETRACT` |

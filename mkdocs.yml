@@ -66,6 +66,9 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/nikolareljin/triaina
       name: triaina on GitHub
+    - icon: material/cube-scan
+      link: https://nikolareljin.github.io/kinect-forge/
+      name: kinect-forge, scans the model
 
 nav:
   - Home: index.md
@@ -99,3 +102,4 @@ nav:
   - Develop:
       - Development: develop/development.md
       - Releasing: develop/releasing.md
+  - About: about.md

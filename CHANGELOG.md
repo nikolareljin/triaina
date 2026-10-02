@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Docs: About page (author, grouped project list) and links to the sibling kinect-forge site from the home page and footer.
 - Docs: audit against the code: `setup_pi.sh --service` steps, `triaina serve` options, `/api/info`, every job form field, `[printer] timeout`, code layout, the manual release steps and archive contents; Fluidd is on the printer, not the Pi.
 
 ## 2026-10-02 — v0.2.0
