@@ -11,7 +11,7 @@ cd triaina
 `./dev` is the shared CLI from
 [script-helpers](https://github.com/nikolareljin/script-helpers); repo-specific
 behaviour is in `scripts/project.sh`. `make` targets do the same things for
-anyone without the submodule: `make install test lint format docs dist clean`.
+anyone without the submodule: `make install test lint format docs docs-serve dist clean`.
 
 ## Layout
 
@@ -21,6 +21,12 @@ anyone without the submodule: `make install test lint format docs dist clean`.
 | `config/inkcut_profile.json` | Inkcut reference values |
 | `triaina/preprocess.py`, `triaina/printer.py` | G-code rewriter and Moonraker / OctoPrint client (stdlib only) |
 | `triaina/config.py`, `jobs.py`, `monitor.py`, `web/` | The service: config, SQLite job store, printer poller, FastAPI app and page |
+| `triaina/convert/` | Design files to polylines: SVG, DXF, PDF/AI, EPS, PNG/JPG |
+| `triaina/cut/` | Placement, cut order, blade-offset compensation, cut G-code and preview |
+| `triaina/model/` | Extrusion, knife mount, STL writer, PrusaSlicer wrapper with fit-to-printer |
+| `triaina/data/` | `prusaslicer_neptune4.ini`, the shipped slicer profile |
+| `deploy/` | systemd unit and example config |
+| `tests/fakes.py`, `tests/fake_moonraker.py` | In-process fake printer; a loopback fake Moonraker for end-to-end tests and demos |
 | `scripts/gcode_preprocessor.py`, `scripts/mode_switch.py` | CLI wrappers, run without installing |
 | `deploy/` | systemd unit and example config |
 | `scripts/setup_pi.sh` | Pi provisioning |

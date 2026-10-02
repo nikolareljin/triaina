@@ -60,9 +60,10 @@ The dashboard is a client of the service's REST API. Interactive docs are at
 
 | Method | Path | Does |
 |---|---|---|
+| GET | `/api/info` | Version, printer and Fluidd URLs, camera URL, config file, job types |
 | GET | `/api/status` | Printer snapshot |
 | GET | `/api/jobs` | Recent jobs |
-| POST | `/api/jobs` | Upload: `kind`, `file`; design options `width`, `fit`, `weed`, `blade_offset`, `cut_feed`, `threshold`, `invert` (multipart) |
+| POST | `/api/jobs` | Upload (multipart): `kind`, `file` (none for `knife-mount`). Design options `width`, `fit`, `weed`, `blade_offset`, `cut_feed`, `threshold`, `invert`; print options `height`, `layer_height`, `infill`, `scale`, `keep_size`; mount options `holder_diameter`, `bolt_spacing`, `standoff` |
 | POST | `/api/jobs/{id}/start` | `{"confirm": true}` |
 | DELETE | `/api/jobs/{id}` | Discard a ready job |
 | GET | `/api/jobs/{id}/output` | Generated G-code |

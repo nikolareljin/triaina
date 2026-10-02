@@ -34,6 +34,21 @@ existing config file.
 | Runs as | system user `triaina`, no login shell |
 | Logs | `journalctl -u triaina -f` |
 
+## Running it by hand
+
+```bash
+python -m triaina serve [--config PATH] [--host ADDR] [--port N] [--reload]
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--config` | `$TRIAINA_CONFIG`, then `/etc/triaina/config.toml` | Config file; missing means defaults |
+| `--host` | `[server] bind` | Listen address |
+| `--port` | `[server] port` | Port; `0` picks a free one |
+| `--reload` | off | Development: restart on code changes (`./dev run` uses it) |
+
+Exit code 2 means the config file is invalid; the error names the key.
+
 ## Configuration
 
 | Section | Key | Default | Meaning |
@@ -41,6 +56,7 @@ existing config file.
 | `[printer]` | `host` | `mkspi.local` | Printer address or full URL |
 | | `port` | `7125` | Moonraker port |
 | | `api_key` | none | Only if Moonraker authorization is on |
+| | `timeout` | `10` | Seconds per Moonraker request |
 | | `web_url` | `http://<host>/` | Fluidd link in the dashboard |
 | `[server]` | `bind` | `0.0.0.0` | Listen address on the Pi |
 | | `port` | `8080` | Dashboard port |
