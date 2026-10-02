@@ -106,3 +106,56 @@ def test_missing_macros_reported_as_none(calls, capsys):
     calls["replies"] = [{"result": {"status": {"print_stats": {"state": "ready"}}}}]
     assert mode_switch.main(["status"]) == 0
     assert "n/a" in capsys.readouterr().out
+
+
+def test_upload_moonraker_multipart(calls, tmp_path):
+    job = tmp_path / "sticker.cut.gcode"
+    job.write_text("CUTTER_MODE\n")
+    calls["replies"] = [moonraker_status(), {"result": {}}]
+    assert mode_switch.main(["upload", str(job), "--start"]) == 0
+    req = calls["requests"][1]
+    assert req.full_url == "http://localhost:7125/server/files/upload"
+    assert req.get_header("Content-type").startswith("multipart/form-data; boundary=")
+    assert b'name="print"\r\n\r\ntrue' in req.data
+    assert b'filename="sticker.cut.gcode"' in req.data and b"CUTTER_MODE" in req.data
+
+
+def test_upload_without_start_skips_busy_check(calls, tmp_path):
+    job = tmp_path / "a.gcode"
+    job.write_text("G1 X1\n")
+    calls["replies"] = [{}]
+    assert mode_switch.main(["upload", str(job)]) == 0
+    assert len(calls["requests"]) == 1
+    assert b'name="print"' not in calls["requests"][0].data
+
+
+def test_upload_start_refused_while_printing(calls, tmp_path):
+    job = tmp_path / "a.gcode"
+    job.write_text("G1 X1\n")
+    calls["replies"] = [moonraker_status(state="printing")]
+    assert mode_switch.main(["upload", str(job), "--start"]) == mode_switch.EXIT_BUSY
+
+
+def test_upload_octoprint_endpoint(calls, tmp_path):
+    job = tmp_path / "a.gcode"
+    job.write_text("G1 X1\n")
+    calls["replies"] = [{"state": "Operational"}, {}]
+    assert mode_switch.main(["upload", str(job), "--backend", "octoprint", "--start"]) == 0
+    assert calls["requests"][1].full_url == "http://localhost/api/files/local"
+
+
+def test_upload_missing_file(calls, tmp_path, capsys):
+    assert mode_switch.main(["upload", str(tmp_path / "nope.gcode")]) == mode_switch.EXIT_HTTP
+    assert "no such file" in capsys.readouterr().err
+
+
+def test_upload_needs_file():
+    with pytest.raises(SystemExit) as exc:
+        mode_switch.main(["upload"])
+    assert exc.value.code == 2
+
+
+def test_start_rejected_for_mode_switch():
+    with pytest.raises(SystemExit) as exc:
+        mode_switch.main(["cutter", "--start"])
+    assert exc.value.code == 2

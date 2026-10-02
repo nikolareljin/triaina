@@ -8,8 +8,7 @@ this file is a reference: copy the values into Inkcut's device dialog. See
 
 | Key | Value | Meaning |
 |---|---|---|
-| `connection.port` | `/dev/triaina` | Stable name from the udev rule |
-| `connection.baudrate` | `250000` | |
+| `connection.transport` | `file` | Inkcut writes G-code to a file; upload it with `mode_switch.py upload` |
 | `protocol` | `gcode` | |
 | `area` | 225 x 225 mm | Neptune 4 bed |
 | `blade.offset_mm` | `0.25` | Tip offset of a standard 45 deg Roland blade |

@@ -7,18 +7,21 @@
 3. Remove overlaps: **Path > Union** for touching letters.
 4. Add a weeding border: a rectangle 5 mm larger than the design.
 
-## 2. Export G-code
+## 2. Generate G-code
 
-Pick one:
+Drag knives need blade-offset compensation: the tip trails the holder axis by
+about 0.25 mm, so corners need small swivel moves. Use a generator that does it.
 
-| Tool | How | Blade signal |
+| Tool | How | Blade offset |
 |---|---|---|
-| Inkscape + Gcodetools (Extensions > Gcodetools) | Orientation points, Tools library (cylinder), Path to G-code | Z moves |
-| Inkcut | See [Inkcut](inkcut.md) | Z moves or macros |
-| LightBurn (GRBL device) | Line mode, power irrelevant | `M3` / `M5` |
+| [Kiri:Moto](https://grid.space/kiri/) (recommended, in the browser) | Laser mode, drag-knife option; bed 225 x 225 mm; export G-code | yes |
+| [DXF2GCODE](https://sourceforge.net/projects/dxf2gcode/) | Export DXF from Inkscape; knife offset as tool diameter | yes (swivel moves) |
+| [Inkcut](inkcut.md) | Blade offset filter; output to file | yes |
+| Inkscape + Gcodetools | Path to G-code | no; corners round slightly |
+| LightBurn (GRBL device) | Line mode | via `M3`/`M5`, no offset |
 
 Any of them works: the preprocessor turns Z moves and `M3`/`M5` into the same
-macros.
+macros. See [Existing tools](../hardware/prior-art.md).
 
 ## 3. Preprocess
 
@@ -41,17 +44,11 @@ cutter; check the export settings.
 ## 5. Send and run
 
 ```bash
-curl -F "file=@sticker.cut.gcode" "http://$TRIAINA_HOST:7125/server/files/upload"
+.venv/bin/python scripts/mode_switch.py upload sticker.cut.gcode --start
 ```
 
-Then start it from Fluidd, or:
-
-```bash
-curl -X POST "http://$TRIAINA_HOST:7125/printer/print/start?filename=sticker.cut.gcode"
-```
-
-The file switches to `CUTTER_MODE` itself and back to `PRINTER_MODE` at the
-end.
+Without `--start` the file is only uploaded; start it from Fluidd. The file
+switches to `CUTTER_MODE` itself and back to `PRINTER_MODE` at the end.
 
 ## 6. Weed
 

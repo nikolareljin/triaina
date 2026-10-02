@@ -9,12 +9,13 @@ Usage::
     python scripts/mode_switch.py status
     python scripts/mode_switch.py cutter --host neptune4.local
     python scripts/mode_switch.py printer --backend octoprint --host octopi.local
+    python scripts/mode_switch.py upload sticker.cut.gcode --start
 
 OctoPrint needs an API key: pass ``--api-key`` or set ``OCTOPRINT_API_KEY``.
 Moonraker accepts ``--api-key`` too (``X-Api-Key``) when its auth is enabled.
 
-Exit codes: 0 success, 1 HTTP or network failure, 3 refused because the
-printer is busy printing, 2 bad arguments (argparse).
+Exit codes: 0 success, 1 HTTP, network or file error, 3 refused because the
+printer is busy printing (mode switch or upload --start), 2 bad arguments.
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
+from pathlib import Path
 from typing import Any, Optional
 
 __all__ = ["Client", "MoonrakerClient", "OctoPrintClient", "main"]
@@ -47,12 +50,21 @@ class Client:
         self.api_key = api_key
         self.timeout = timeout
 
-    def request(self, method: str, path: str, body: Optional[dict] = None) -> Any:
-        data = json.dumps(body).encode() if body is not None else None
+    def request(
+        self,
+        method: str,
+        path: str,
+        body: Optional[dict] = None,
+        raw: Optional[bytes] = None,
+        content_type: str = "application/json",
+    ) -> Any:
+        data = raw
+        if data is None and body is not None:
+            data = json.dumps(body).encode()
         req = urllib.request.Request(self.base_url + path, data=data, method=method)
         req.add_header("Accept", "application/json")
         if data is not None:
-            req.add_header("Content-Type", "application/json")
+            req.add_header("Content-Type", content_type)
         if self.api_key:
             req.add_header("X-Api-Key", self.api_key)
         try:
@@ -77,9 +89,35 @@ class Client:
     def run_gcode(self, script: str) -> None:
         raise NotImplementedError
 
+    def upload(self, path: Path, start: bool) -> None:
+        raise NotImplementedError
+
+    def _post_file(self, url_path: str, path: Path, fields: dict) -> Any:
+        body, content_type = multipart(fields, path.name, path.read_bytes())
+        return self.request("POST", url_path, raw=body, content_type=content_type)
+
+
+def multipart(fields: dict, filename: str, content: bytes) -> tuple[bytes, str]:
+    """Encode form fields plus one file as multipart/form-data."""
+    boundary = uuid.uuid4().hex
+    parts = []
+    for name, value in fields.items():
+        parts.append(
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'
+            f"{value}\r\n".encode()
+        )
+    parts.append(
+        f'--{boundary}\r\nContent-Disposition: form-data; name="file"; '
+        f'filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
+        + content
+        + b"\r\n"
+    )
+    parts.append(f"--{boundary}--\r\n".encode())
+    return b"".join(parts), f"multipart/form-data; boundary={boundary}"
+
 
 class MoonrakerClient(Client):
-    """Moonraker: https://moonraker.readthedocs.io/en/latest/web_api/"""
+    """Moonraker: https://moonraker.readthedocs.io/en/latest/external_api/introduction/"""
 
     def status(self) -> dict:
         query = urllib.parse.urlencode(
@@ -100,6 +138,12 @@ class MoonrakerClient(Client):
     def run_gcode(self, script: str) -> None:
         self.request("POST", "/printer/gcode/script", {"script": script})
 
+    def upload(self, path: Path, start: bool) -> None:
+        fields = {"root": "gcodes"}
+        if start:
+            fields["print"] = "true"
+        self._post_file("/server/files/upload", path, fields)
+
 
 class OctoPrintClient(Client):
     """OctoPrint: https://docs.octoprint.org/en/master/api/"""
@@ -119,6 +163,10 @@ class OctoPrintClient(Client):
     def run_gcode(self, script: str) -> None:
         self.request("POST", "/api/printer/command", {"commands": script.splitlines()})
 
+    def upload(self, path: Path, start: bool) -> None:
+        fields = {"select": "true", "print": "true"} if start else {}
+        self._post_file("/api/files/local", path, fields)
+
 
 def make_client(
     backend: str, host: str, port: Optional[int], api_key: Optional[str], timeout: float
@@ -133,9 +181,16 @@ def make_client(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mode_switch",
-        description="Query or switch triaina printer/cutter mode via Moonraker or OctoPrint.",
+        description=(
+            "Query or switch triaina printer/cutter mode, or upload a job,"
+            " via Moonraker or OctoPrint."
+        ),
     )
-    parser.add_argument("action", choices=["status", "cutter", "printer"])
+    parser.add_argument("action", choices=["status", "cutter", "printer", "upload"])
+    parser.add_argument("file", nargs="?", type=Path, help="G-code file for upload")
+    parser.add_argument(
+        "--start", action="store_true", help="upload: start the job after uploading"
+    )
     parser.add_argument("--backend", choices=["moonraker", "octoprint"], default="moonraker")
     parser.add_argument(
         "--host",
@@ -157,13 +212,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.action == "upload":
+        if args.file is None:
+            parser.error("upload needs a FILE")
+        if not args.file.is_file():
+            print(f"error: no such file: {args.file}", file=sys.stderr)
+            return EXIT_HTTP
+    elif args.file is not None or args.start:
+        parser.error("FILE and --start only apply to upload")
     port = args.port
     if port is None and args.backend == "moonraker" and "://" not in args.host:
         port = 7125
     client = make_client(args.backend, args.host, port, args.api_key, args.timeout)
 
     try:
+        if args.action == "upload" and not args.start:
+            # Uploading never touches a running job, so no status check.
+            client.upload(args.file, start=False)
+            print(f"uploaded {args.file.name}")
+            return 0
+
         status = client.status()
         if args.action == "status":
             if args.json:
@@ -176,8 +246,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         if status["state"] == "printing" and not args.force:
             print("refused: printer is printing; pass --force to override", file=sys.stderr)
             return EXIT_BUSY
+        if args.action == "upload":
+            client.upload(args.file, start=True)
+            print(f"uploaded and started {args.file.name}")
+            return 0
         client.run_gcode(MODE_MACROS[args.action])
-    except ApiError as exc:
+    except (ApiError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_HTTP
 

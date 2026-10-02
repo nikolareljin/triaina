@@ -31,33 +31,19 @@ into `scripts/script-helpers`. If you forgot it: `git submodule update --init`.
 
 ## 3. Run the setup script
 
-=== "Topology A (network)"
+```bash
+scripts/setup_pi.sh
+```
 
-    ```bash
-    scripts/setup_pi.sh --skip-udev
-    ```
-
-=== "Topology B (USB host)"
-
-    Plug in the printer USB cable (5 V pin blocked), then:
-
-    ```bash
-    scripts/setup_pi.sh
-    # or, if the board is not auto-detected:
-    lsusb
-    scripts/setup_pi.sh --vid 1a86 --pid 7523
-    ```
-
-    Replug the cable and check `ls -l /dev/triaina`.
-
+It installs the apt packages and the Python venv. Add `--udev` only if you
+connect the optional [console cable](../hardware/wiring.md#optional-usb-c-console-cable).
 Preview what it would do with `--dry-run`. Every option is in
 [setup_pi.sh reference](../reference/setup-pi.md).
 
 ## 4. Point the scripts at the printer
 
 ```bash
-echo 'export TRIAINA_HOST=neptune4.local' >> ~/.bashrc   # Topology A
-echo 'export TRIAINA_HOST=localhost' >> ~/.bashrc         # Topology B
+echo 'export TRIAINA_HOST=neptune4.local' >> ~/.bashrc
 source ~/.bashrc
 .venv/bin/python scripts/mode_switch.py status
 ```
@@ -77,5 +63,5 @@ blade_down n/a
 ## 5. Optional camera
 
 Connect the Camera Module ribbon with the contacts facing the HDMI port, then
-install `crowsnest` (or use OctoPi's built-in streamer) and add the stream URL
+install `crowsnest` with [KIAUH](https://github.com/dw-0/kiauh) (or use OctoPi's built-in streamer) and add the stream URL
 to Fluidd under Settings > Cameras.
