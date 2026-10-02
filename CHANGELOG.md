@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Logo redrawn as a three-pronged trident; cut line now renders.
+
 ## 2026-10-01 — v0.1.0
 
 - Klipper macros `CUTTER_MODE`, `PRINTER_MODE`, `CUT_PLUNGE`, `CUT_RETRACT`.
