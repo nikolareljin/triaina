@@ -28,8 +28,15 @@ project_build() {
   make -C "$DEV_REPO_ROOT" dist
 }
 
+# The dashboard with auto-reload, against the printer in $TRIAINA_CONFIG (or
+# defaults). Data goes to .dev-data/ instead of /var/lib/triaina.
 project_run() {
-  not_applicable run "nothing to start; see docs/use/workflow.md for the cut pipeline"
+  local cfg="${TRIAINA_CONFIG:-$DEV_REPO_ROOT/.dev-config.toml}"
+  if [[ ! -f "$cfg" ]]; then
+    printf '[paths]\ndata_dir = "%s"\n[server]\nbind = "127.0.0.1"\n' "$DEV_REPO_ROOT/.dev-data" > "$cfg"
+    log_info "run: wrote $cfg (edit [printer] host to point at your printer)"
+  fi
+  triaina_python -m triaina serve --config "$cfg" --reload "${DEV_ARGS[@]+"${DEV_ARGS[@]}"}"
 }
 
 project_deploy() {

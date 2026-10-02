@@ -6,7 +6,7 @@ import urllib.error
 
 import pytest
 
-import mode_switch
+import triaina.printer as mode_switch
 
 
 class FakeResponse(io.BytesIO):

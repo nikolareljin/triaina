@@ -60,7 +60,12 @@ blade_down n/a
 `mode n/a` means Klipper has no `_TRIAINA_VARS` yet. Next:
 [Klipper macros](klipper.md).
 
-## 5. Optional camera
+## 5. Dashboard service
+
+`scripts/setup_pi.sh --service` installs the dashboard as a service that
+starts on boot. See [Dashboard service](service.md).
+
+## 6. Optional camera
 
 Connect the Camera Module ribbon with the contacts facing the HDMI port, then
 install `crowsnest` with [KIAUH](https://github.com/dw-0/kiauh) (or use OctoPi's built-in streamer) and add the stream URL

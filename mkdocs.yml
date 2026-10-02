@@ -79,7 +79,9 @@ nav:
       - Raspberry Pi: setup/pi.md
       - Klipper macros: setup/klipper.md
       - Calibrating the knife: setup/calibration.md
+      - Dashboard service: setup/service.md
   - Use:
+      - Dashboard: use/dashboard.md
       - Cutting a sticker: use/workflow.md
       - Switching modes: use/mode-switching.md
       - Inkcut: use/inkcut.md

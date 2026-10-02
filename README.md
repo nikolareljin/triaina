@@ -16,12 +16,14 @@ diagrams, parts list with store links, setup and calibration).
 |---|---|
 | `config/klipper_cutter_macros.cfg` | `CUTTER_MODE`, `PRINTER_MODE`, `CUT_PLUNGE`, `CUT_RETRACT` |
 | `config/inkcut_profile.json` | Inkcut device settings |
+| `triaina/` (service) | Dashboard on the Pi at `http://triaina.local:8080`: live printer state, mode switch, cut and print jobs, camera. Runs as a systemd service |
 | `scripts/gcode_preprocessor.py` | Inkscape / Inkcut / LightBurn G-code to safe cutter G-code |
 | `scripts/mode_switch.py` | Switch modes over Moonraker or OctoPrint |
 | `scripts/setup_pi.sh` | Pi provisioning: packages and venv |
 | `assets/logo.svg` | Logo |
 
-The Python scripts use only the standard library.
+The CLI scripts use only the standard library; the service needs FastAPI and
+uvicorn (`pyproject.toml`).
 
 ## Hardware
 
@@ -64,6 +66,18 @@ Configuration) and add:
 Save & Restart. Then measure and set `offset_x`, `offset_y`, `offset_z`,
 `z_cut` in `_TRIAINA_VARS`
 ([calibration](https://nikolareljin.github.io/triaina/setup/calibration/)).
+
+## Dashboard service
+
+```bash
+scripts/setup_pi.sh --service            # installs, enables, starts; re-run to update
+sudo nano /etc/triaina/config.toml       # [printer] host = "neptune4.local"
+sudo systemctl restart triaina
+```
+
+Open `http://triaina.local:8080/`. It starts on boot and restarts on failure.
+Upload cut or print G-code, confirm the physical setup, start, and watch it.
+See [Dashboard service](https://nikolareljin.github.io/triaina/setup/service/).
 
 ## Cutting a sticker
 

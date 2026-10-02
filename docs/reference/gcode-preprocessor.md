@@ -1,6 +1,7 @@
 # gcode_preprocessor.py
 
-File: [`scripts/gcode_preprocessor.py`](https://github.com/nikolareljin/triaina/blob/main/scripts/gcode_preprocessor.py).
+CLI: [`scripts/gcode_preprocessor.py`](https://github.com/nikolareljin/triaina/blob/main/scripts/gcode_preprocessor.py), code in
+[`triaina/preprocess.py`](https://github.com/nikolareljin/triaina/blob/main/triaina/preprocess.py) (also used by the service).
 Standard library only; Python 3.9 or newer.
 
 ```bash
@@ -60,7 +61,7 @@ PRINTER_MODE
 ## Python API
 
 ```python
-from gcode_preprocessor import Options, process_lines
+from triaina.preprocess import Options, process_lines
 
 out = process_lines(open("job.gcode").read().splitlines(), Options(max_feed=1200))
 ```

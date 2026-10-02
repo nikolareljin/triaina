@@ -8,3 +8,7 @@ site/
 *.cut.gcode
 docs/superpowers/
 .private-names
+.dev-data/
+.dev-config.toml
+*.egg-info/
+build/

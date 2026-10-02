@@ -1,0 +1,24 @@
+# triaina dashboard and printer monitor. Installed by scripts/setup_pi.sh --service.
+[Unit]
+Description=triaina: Neptune 4 cutter and printer dashboard
+Documentation=https://nikolareljin.github.io/triaina/setup/service/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=triaina
+Group=triaina
+ExecStart=/opt/triaina/.venv/bin/python -m triaina serve --config /etc/triaina/config.toml
+Restart=always
+RestartSec=5
+# /var/lib/triaina and /etc/triaina, owned by the service user.
+StateDirectory=triaina
+ConfigurationDirectory=triaina
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
