@@ -219,3 +219,19 @@ def test_raster_needs_width(tmp_path):
     with pytest.raises(LayoutError, match="set a width"):
         run(p, tmp_path / "w", CutOptions())
     assert run(p, tmp_path / "w2", CutOptions(width=80)).summary["width_mm"] == 80.0
+
+
+def test_svg_without_size_warns(tmp_path):
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">'
+        '<rect width="100" height="50"/></svg>'
+    )
+    d = load(write(tmp_path, "n.svg", svg), tmp_path / "w")
+    assert any("no width/height" in w for w in d.warnings)
+
+
+def test_svg_with_size_does_not_warn(tmp_path):
+    d = load(
+        write(tmp_path, "a.svg", SVG_MM.replace('<text x="5" y="45">hi</text>', "")), tmp_path / "w"
+    )
+    assert d.warnings == []

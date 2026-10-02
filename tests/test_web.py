@@ -416,3 +416,53 @@ def test_blank_numeric_field_means_default(env):
     )
     assert r.status_code == 201
     assert wait_state(env[2], r.json()["id"])["summary"]["options"]["blade_offset"] == 0.25
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("width", "0"),
+        ("width", "-5"),
+        ("blade_offset", "3"),
+        ("weed", "25"),
+        ("cut_feed", "0"),
+        ("threshold", "300"),
+    ],
+)
+def test_cut_design_option_ranges(env, field, value):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", field: value},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 422 and field in r.json()["detail"]
+
+
+def test_conversion_work_dir_removed(env):
+    cfg, _, client, _ = env
+    r = client.post("/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)})
+    job = wait_state(client, r.json()["id"])
+    job_dir = cfg.paths.data_dir / "jobs" / str(job["id"])
+    assert job_dir.is_dir() and not (job_dir / "work").exists()
+    assert (job_dir / "preview.svg").is_file()
+
+
+def test_discard_frees_files(env):
+    cfg, _, client, _ = env
+    job = upload(client, "print-gcode").json()
+    job_dir = cfg.paths.data_dir / "jobs" / str(job["id"])
+    assert job_dir.is_dir()
+    out = client.delete(f"/api/jobs/{job['id']}").json()
+    assert out["state"] == "cancelled" and out["has_output"] is False and not job_dir.exists()
+    assert client.get(f"/api/jobs/{job['id']}/output").status_code == 404
+
+
+def test_finished_job_files_can_be_deleted(env):
+    cfg, printer, client, app = env
+    job = upload(client, "print-gcode").json()
+    client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True})
+    printer.state = "complete"
+    app.state.monitor.poll_once()
+    assert client.get(f"/api/jobs/{job['id']}").json()["state"] == "done"
+    out = client.delete(f"/api/jobs/{job['id']}").json()
+    assert out["state"] == "done" and out["has_output"] is False

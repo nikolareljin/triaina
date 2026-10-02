@@ -201,6 +201,10 @@ def create_app(
         except Exception as exc:  # noqa: BLE001 - a job must never stay "converting"
             log.exception("converting job %s failed", job_id)
             jobs.update(job_id, state="failed", error=f"conversion failed: {exc}")
+        finally:
+            # Intermediate files (traced bitmap, PDF page SVG) are not needed
+            # afterwards; on a Pi they would fill the SD card job by job.
+            shutil.rmtree(output.parent / "work", ignore_errors=True)
 
     @app.post("/api/jobs", dependencies=auth, status_code=201)
     def create_job(
@@ -224,7 +228,7 @@ def create_app(
         cut_opts = None
         if kind == "cut-design":
             cut_opts = CutOptions(
-                width=width or None,
+                width=width,
                 fit=fit,
                 margin=cfg.cut.margin,
                 bed_x=cfg.cut.bed_x,
@@ -239,13 +243,21 @@ def create_app(
                 threshold=threshold,
                 invert=invert,
             )
+            # (name, value, low, high): the same ranges as the form fields.
+            limits = (
+                ("width", width, 1, 1000),
+                ("weed", weed, 0, 20),
+                ("blade_offset", cut_opts.blade_offset, 0, 2),
+                ("cut_feed", cut_opts.cut_feed, 1, 20000),
+                ("threshold", threshold, 0, 255),
+            )
             bad = [
-                n
-                for n, v in (("weed", weed), ("blade_offset", cut_opts.blade_offset))
-                if not 0 <= v <= 20
+                f"{n} must be {lo}-{hi}"
+                for n, v, lo, hi in limits
+                if v is not None and not lo <= v <= hi
             ]
-            if not 0 < cut_opts.cut_feed or bad or not 0 <= threshold <= 255:
-                raise HTTPException(422, f"option out of range: {bad or 'cut_feed/threshold'}")
+            if bad:
+                raise HTTPException(422, "; ".join(bad))
 
         job = jobs.create(kind, name)
         job_dir = data_dir / "jobs" / str(job.id)
@@ -322,7 +334,10 @@ def create_app(
             raise HTTPException(409, "wait for the conversion to finish")
         if job.state == "ready":
             job = jobs.update(job.id, state="cancelled")
-        return job.to_dict()
+        # Free the space: uploads go up to 50 MB and a Pi runs from an SD card.
+        # The row stays as history; its files are gone.
+        shutil.rmtree(data_dir / "jobs" / str(job.id), ignore_errors=True)
+        return jobs.update(job.id, output="", source="").to_dict()
 
     # -- printer control -----------------------------------------------------
 

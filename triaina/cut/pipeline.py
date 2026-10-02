@@ -120,6 +120,7 @@ def run(source: Path, work_dir: Path, opts: CutOptions) -> CutResult:
         paths = paths + [weed_border(paths, weed)]
     ordered = order(paths)
     axis = [compensate(p, opts.blade_offset, opts.cutoff_deg, opts.overcut) for p in ordered]
+    axis = [a for a in axis if len(a) >= 2]
 
     # max_feed limits cutting. Travel may be faster: every path's first cut move
     # carries its own F, so a travel F never leaks into a cut (F is modal).

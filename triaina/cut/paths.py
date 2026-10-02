@@ -116,7 +116,9 @@ def place(
             raise LayoutError("the design has no width to scale")
         scale = width / b.width
     elif fit:
+        # Shrink only: a small design keeps its size (fitting must not enlarge).
         scale = min(
+            1.0,
             usable_w / b.width if b.width else math.inf,
             usable_h / b.height if b.height else math.inf,
         )
@@ -151,6 +153,59 @@ def _box_dist(b: "Bounds", p: Point) -> float:
     return math.hypot(dx, dy)
 
 
+class _Grid:
+    """Ready shapes bucketed by box centre, for nearest-next without a full scan.
+
+    pop_nearest searches rings of cells outward and stops once no unvisited
+    ring can hold anything nearer. Distance is to the box, so a large box (a
+    weeding border) whose centre is far away is still found when the search
+    reaches its centre's ring; with few large boxes that is the right trade.
+    """
+
+    CELL_MM = 10.0
+
+    def __init__(self, boxes: list["Bounds"]):
+        self.boxes = boxes
+        self.cells: dict[tuple[int, int], set[int]] = {}
+        self.count = 0
+
+    def _key(self, i: int) -> tuple[int, int]:
+        b = self.boxes[i]
+        return (
+            int(math.floor((b.min_x + b.max_x) / 2 / self.CELL_MM)),
+            int(math.floor((b.min_y + b.max_y) / 2 / self.CELL_MM)),
+        )
+
+    def __bool__(self) -> bool:
+        return self.count > 0
+
+    def add(self, i: int) -> None:
+        self.cells.setdefault(self._key(i), set()).add(i)
+        self.count += 1
+
+    def pop_nearest(self, p: Point) -> int:
+        cx, cy = int(math.floor(p[0] / self.CELL_MM)), int(math.floor(p[1] / self.CELL_MM))
+        keys = list(self.cells)
+        max_ring = max(max(abs(kx - cx), abs(ky - cy)) for kx, ky in keys)
+        best, best_d = None, math.inf
+        for r in range(max_ring + 1):
+            # Nothing in ring r or beyond has its centre closer than (r - 1) cells.
+            if best is not None and (r - 1) * self.CELL_MM > best_d:
+                break
+            for kx in range(cx - r, cx + r + 1):
+                for ky in (cy - r, cy + r) if abs(kx - cx) != r else range(cy - r, cy + r + 1):
+                    for i in self.cells.get((kx, ky), ()):
+                        d = _box_dist(self.boxes[i], p)
+                        if d < best_d or (d == best_d and best is not None and i < best):
+                            best, best_d = i, d
+        cell = self.cells[self._key(best)]
+        cell.discard(best)
+        if not cell:
+            del self.cells[self._key(best)]
+        self.count -= 1
+        return best
+
+
 def order(paths: list[Polyline], start: Point = (0.0, 0.0)) -> list[Polyline]:
     """Cut order: inner shapes before the shapes around them, otherwise
     nearest next.
@@ -173,12 +228,14 @@ def order(paths: list[Polyline], start: Point = (0.0, 0.0)) -> list[Polyline]:
             if boxes[i].contains(boxes[j]):
                 waiting[i] += 1
                 outer[j].append(i)
-    ready = {i for i in range(n) if waiting[i] == 0}
+    grid = _Grid(boxes)
+    for i in range(n):
+        if waiting[i] == 0:
+            grid.add(i)
     out: list[Polyline] = []
     pos = start
-    while ready:
-        best = min(ready, key=lambda k: _box_dist(boxes[k], pos))
-        ready.discard(best)
+    while grid:
+        best = grid.pop_nearest(pos)
         path = paths[best]
         if is_closed(path):
             path = _rotate_to_nearest(path, pos)
@@ -189,5 +246,5 @@ def order(paths: list[Polyline], start: Point = (0.0, 0.0)) -> list[Polyline]:
         for i in outer[best]:
             waiting[i] -= 1
             if waiting[i] == 0:
-                ready.add(i)
+                grid.add(i)
     return out

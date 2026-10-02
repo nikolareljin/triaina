@@ -31,10 +31,10 @@ def _flatten(path, chord_px: float) -> list[Polyline]:
             if isinstance(seg, (Line, Close)):
                 pts.append((seg.end.x, seg.end.y))
                 continue
-            try:
-                seg_len = seg.length(error=1e-3)
-            except Exception:  # noqa: BLE001 - degenerate curve: sample a little
-                seg_len = 0.0
+            # Estimate from 9 samples: only picks the chord count. svgelements'
+            # exact length() recurses and was 85% of the load time.
+            probe = [seg.point(k / 8) for k in range(9)]
+            seg_len = sum(math.dist((a.x, a.y), (b.x, b.y)) for a, b in zip(probe, probe[1:]))
             n = max(2, math.ceil(seg_len / chord_px))
             for k in range(1, n + 1):
                 p = seg.point(k / n)
@@ -74,6 +74,12 @@ def load_svg(path: Path) -> Design:
             paths.append([(x * PX_TO_MM, y * PX_TO_MM) for x, y in poly])
 
     warnings = []
+    root = svg.values.get("attributes", {}) if hasattr(svg, "values") else {}
+    if "width" not in root or "height" not in root:
+        warnings.append(
+            "the SVG has no width/height, so its size is a guess (1 unit = 1/96 in);"
+            " set the width in the job"
+        )
     if texts:
         warnings.append(
             f"{texts} text element(s) skipped: convert text to paths"
@@ -86,6 +92,6 @@ def load_svg(path: Path) -> Design:
         )
     if not paths:
         raise ConversionError(
-            "no shapes found in the SVG" + (f" ({warnings[0]})" if warnings else "")
+            "no shapes found in the SVG" + (f" ({'; '.join(warnings)})" if warnings else "")
         )
     return Design(flip_y(paths), warnings)

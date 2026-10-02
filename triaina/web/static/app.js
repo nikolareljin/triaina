@@ -97,12 +97,15 @@ function renderJobs(jobs) {
       go.textContent = "Start";
       go.className = "primary";
       go.onclick = () => confirmStart(j);
-      const drop = document.createElement("button");
-      drop.textContent = "Discard";
-      drop.onclick = () => api("DELETE", `api/jobs/${j.id}`).catch((e) => toast(e.message));
-      act.append(go, " ", drop);
+      act.append(go, " ");
     }
-    if (j.summary && j.state !== "failed") {
+    if (!["converting", "sending", "running"].includes(j.state) && j.has_output) {
+      const drop = document.createElement("button");
+      drop.textContent = j.state === "ready" ? "Discard" : "Delete files";
+      drop.onclick = () => api("DELETE", `api/jobs/${j.id}`).catch((e) => toast(e.message));
+      act.append(drop);
+    }
+    if (j.summary && j.has_output && j.state !== "failed") {
       const pv = document.createElement("a");
       pv.href = `api/jobs/${j.id}/preview.svg${token ? `?token=${encodeURIComponent(token)}` : ""}`;
       pv.target = "_blank";

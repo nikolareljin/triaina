@@ -58,9 +58,11 @@ def compensate(
     path: Polyline, offset: float, cutoff_deg: float = 20.0, overcut: float = 1.0
 ) -> Polyline:
     """Return the axis path that makes the trailing tip follow `path`."""
-    path = clean([path])[0] if len(path) >= 2 else path
-    if len(path) < 2:
-        return list(path)
+    cleaned = clean([path])
+    if not cleaned:
+        # No length at all (every point the same): nothing to cut.
+        return []
+    path = cleaned[0]
     if is_closed(path) and overcut > 0:
         path = _extend(path, overcut)
     if offset <= 0:

@@ -162,3 +162,12 @@ def test_order_is_fast_for_many_shapes():
     assert len(order(shapes)) == 900
     # Cubic ordering took about 9 s for this on a desktop; a Pi 3 is ~10x slower.
     assert time.time() - t < 3
+
+
+def test_fit_never_enlarges():
+    small = place([SQUARE], bed=(225, 225), margin=5, fit=True)
+    assert bounds(small).width == pytest.approx(20)
+
+
+def test_degenerate_path_compensates_to_nothing():
+    assert compensate([(1, 1), (1, 1)], 0.25) == []
