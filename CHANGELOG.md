@@ -2,16 +2,27 @@
 
 ## [Unreleased]
 
-- Docs: the printer is wired-only (RJ45, no built-in Wi-Fi); wiring now goes through a small unmanaged switch (TP-Link TL-SF1005D recommended) and the parts list has a Network section.
-- Default printer host is `mkspi.local` (the Neptune 4's MKS-PI board name), not `neptune4.local`; docs lead with the printer's IP address.
-- Print jobs built on the Pi: a 2D design extruded into a plate, STL/3MF models, and a parametric drag-knife clamp (clamp ears with an M3 screw, slotted mounting holes, layouts that cannot work refused); sliced with PrusaSlicer and a shipped Neptune 4 profile. Models are measured and shrunk to fit the printer (bed, skirt and height), with a scale option for unit-less STL. Starting a print in cutter mode runs PRINTER_MODE first.
-- Cut designs from the dashboard: SVG, DXF, PDF, AI, EPS, PNG and JPG are converted on the Pi with blade-offset compensation, inner-first cut order, optional weeding border, size/fit options and an SVG preview. `setup_pi.sh --service` installs poppler-utils, ghostscript and potrace.
-- Dashboard service (`python -m triaina serve`): live printer state, mode switch, cut and print G-code jobs with a physical-setup confirmation, pause/resume/cancel, emergency stop, camera. systemd unit, `setup_pi.sh --service`, optional token.
-- Code moved into the `triaina` package (`preprocess`, `printer`); `scripts/*.py` are thin CLI wrappers.
-- `mode_switch.py upload FILE [--start]`: upload a job to Moonraker or OctoPrint, optionally start it.
-- `setup_pi.sh`: udev rule is opt-in (`--udev`) and targets the USB-C console bridge; the port is the printer host's console, not the MCU.
-- Docs: Pi-as-Klipper-host (Topology B) corrected and marked experimental: it needs the MCU UART inside the base, not USB-C; new Existing tools page (Kiri:Moto, DXF2GCODE, Inkcut, Moonraker, OpenNept4une, KIAUH); Inkcut profile writes to a file.
-- Logo redrawn as a three-pronged trident; cut line now renders.
+## 2026-10-02 — v0.2.0
+
+### Added
+
+- Dashboard service on the Pi (`python -m triaina serve`, systemd unit, `setup_pi.sh --service`): live printer state, mode switch, pause/resume/cancel, emergency stop and firmware restart, camera, optional token. Starts on boot, restarts on failure.
+- Cut jobs from design files: SVG, DXF, PDF, AI, EPS, PNG and JPG converted on the Pi with blade-offset compensation, inner-first cut order, optional weeding border, size/fit options and an SVG preview. Designs are placed only where the knife and the nozzle can both reach.
+- Print jobs built on the Pi: a 2D design extruded into a plate, STL/3MF models, and a parametric drag-knife clamp; sliced with PrusaSlicer and a shipped Neptune 4 profile. Models are measured and shrunk to fit the printer, with a scale option for unit-less STL.
+- `mode_switch.py upload FILE [--start]`.
+- Docs: Existing tools page; wired network through a small switch, with a parts list entry.
+
+### Changed
+
+- Code moved into the `triaina` package; `scripts/*.py` are thin CLI wrappers.
+- `setup_pi.sh`: the udev rule is opt-in (`--udev`) and targets the printer's USB-C console bridge.
+- Default printer host is `mkspi.local` (the Neptune 4's board name).
+- Starting a print in cutter mode runs `PRINTER_MODE` first.
+- Logo redrawn as a three-pronged trident.
+
+### Fixed
+
+- Docs: the printer's USB-C port is its Linux console, not the MCU; Pi-as-Klipper-host corrected and marked experimental. The printer is wired-only (no built-in Wi-Fi).
 
 ## 2026-10-01 — v0.1.0
 
