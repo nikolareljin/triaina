@@ -240,3 +240,39 @@ def test_start_sees_print_started_elsewhere(env):
     job = upload(client, "print-gcode").json()
     printer.state = "printing"  # started from Fluidd after the last poll
     assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 409
+
+
+def test_estop_then_firmware_restart(env):
+    _, printer, client, _ = env
+    snap = client.post("/api/estop").json()
+    # Moonraker answers, Klipper is down: reachable, not "offline".
+    assert snap["online"] is True and snap["klippy"] == "shutdown"
+    assert client.post("/api/mode/cutter").status_code == 409
+    assert client.post("/api/firmware-restart").json()["klippy"] == "ready"
+    assert ("firmware_restart",) in printer.calls
+
+
+def test_preparation_error_fails_job(env, monkeypatch):
+    def boom(*_a, **_k):
+        raise ValueError("bad G-code")
+
+    monkeypatch.setattr("triaina.web.app.process_lines", boom)
+    r = upload(env[2], "cut-gcode")
+    assert r.status_code == 201
+    assert r.json()["state"] == "failed" and "bad G-code" in r.json()["error"]
+
+
+def test_unexpected_upload_error_does_not_leave_job_sending(env):
+    _, printer, client, _ = env
+
+    def boom(path, start):
+        raise RuntimeError("surprise")
+
+    printer.upload = boom
+    job = upload(client, "print-gcode").json()
+    assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 502
+    assert client.get(f"/api/jobs/{job['id']}").json()["state"] == "failed"
+    job2 = upload(client, "print-gcode").json()
+    # Not blocked by a stuck "sending" job.
+    printer.upload = lambda path, start: None
+    assert client.post(f"/api/jobs/{job2['id']}/start", json={"confirm": True}).status_code == 200

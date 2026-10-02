@@ -14,10 +14,14 @@ class FakePrinter:
         self.calls = []
         self.uploads = []
         self.fail_upload = False
+        self.klippy_state = "ready"
 
     def snapshot(self):
         if not self.online:
             raise ApiError("GET /printer/objects/query: connection refused")
+        if self.klippy_state != "ready":
+            # Moonraker may refuse object queries while Klipper is down.
+            raise ApiError("GET /printer/objects/query: HTTP 503 Klippy Disconnected")
         return {
             "klippy": "ready",
             "klippy_message": "",
@@ -54,3 +58,13 @@ class FakePrinter:
 
     def emergency_stop(self):
         self.calls.append(("estop",))
+        self.klippy_state = "shutdown"
+
+    def firmware_restart(self):
+        self.calls.append(("firmware_restart",))
+        self.klippy_state = "ready"
+
+    def server_info(self):
+        if not self.online:
+            raise ApiError("GET /server/info: connection refused")
+        return {"klippy_state": self.klippy_state, "state_message": "Shutdown due to M112"}

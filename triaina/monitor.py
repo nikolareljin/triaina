@@ -62,7 +62,7 @@ class Monitor:
             snap = self.client.snapshot()
             snap.update(online=True, error=None)
         except ApiError as exc:
-            snap = {"online": False, "error": str(exc)}
+            snap = self._klippy_down(exc)
         snap["updated"] = time.time()
         if snap["online"]:
             self._reconcile(snap)
@@ -70,6 +70,23 @@ class Monitor:
         snap["active_job"] = active.to_dict() if active else None
         self._set(snap)
         return snap
+
+    def _klippy_down(self, exc: ApiError) -> dict:
+        """Object query failed. If Moonraker itself answers, the printer is
+        reachable and Klipper is down (shutdown after an emergency stop, error,
+        disconnected): say so instead of "offline"."""
+        try:
+            info = self.client.server_info()
+        except ApiError:
+            return {"online": False, "error": str(exc)}
+        state = info.get("klippy_state", "unknown")
+        return {
+            "online": True,
+            "error": None,
+            "klippy": state,
+            "klippy_message": info.get("state_message") or str(exc),
+            "state": "unknown",
+        }
 
     def _reconcile(self, snap: dict) -> None:
         job = self.jobs.active()
@@ -86,6 +103,10 @@ class Monitor:
                 self.jobs.update(
                     job.id, state="failed", error="job no longer loaded on the printer"
                 )
+            return
+        if snap.get("state") == "standby" and time.time() - job.updated > START_GRACE_S:
+            # Our file is still named but nothing runs: Klipper restarted mid-job.
+            self.jobs.update(job.id, state="failed", error="printer restarted during the job")
             return
         final = FINAL_STATES.get(snap.get("state"))
         if final:

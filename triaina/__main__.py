@@ -38,8 +38,9 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     from triaina.web.app import create_app
 
-    host = args.host or cfg.server.bind
-    port = args.port or cfg.server.port
+    host = cfg.server.bind if args.host is None else args.host
+    # `is None`, not `or`: --port 0 (any free port) is a valid choice.
+    port = cfg.server.port if args.port is None else args.port
     logging.getLogger("triaina").info(
         "config %s, printer %s, data %s",
         cfg.source or "(defaults)",

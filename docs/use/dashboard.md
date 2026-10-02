@@ -15,6 +15,11 @@ and progress.
 | Printer mode | Runs `PRINTER_MODE` | Printer online and idle |
 | Pause / Resume / Cancel | Moonraker print controls | A job is printing or paused |
 | Emergency stop | Moonraker `emergency_stop`; Klipper halts and needs a firmware restart | Always (asks first) |
+| Firmware restart | Moonraker `firmware_restart`; brings Klipper back | Shown only while Klipper is not ready (after an emergency stop or an error) |
+
+When Klipper is shut down or in error but Moonraker answers, the panel says
+`Klipper shutdown: <reason>` rather than "offline". "Offline" means the
+printer does not answer at all.
 
 "macros not installed" in the Mode field means `printer.cfg` does not include
 the [triaina macros](../setup/klipper.md).
@@ -61,5 +66,6 @@ The dashboard is a client of the service's REST API. Interactive docs are at
 | POST | `/api/mode/{cutter,printer}` | Mode switch |
 | POST | `/api/print/{pause,resume,cancel}` | Print control |
 | POST | `/api/estop` | Emergency stop |
+| POST | `/api/firmware-restart` | Firmware restart |
 | WS | `/ws` | Live status and jobs |
 | GET | `/healthz` | Liveness (no token needed) |

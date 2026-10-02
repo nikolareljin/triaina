@@ -188,6 +188,15 @@ class MoonrakerClient(Client):
     def emergency_stop(self) -> None:
         self.request("POST", "/printer/emergency_stop")
 
+    def firmware_restart(self) -> None:
+        self.request("POST", "/printer/firmware_restart")
+
+    def server_info(self) -> dict:
+        """Moonraker's own state. Answers even when Klipper is shut down or
+        disconnected, when object queries may fail."""
+        result = self.request("GET", "/server/info") or {}
+        return result.get("result", {})
+
     def upload(self, path: Path, start: bool) -> None:
         fields = {"root": "gcodes"}
         if start:

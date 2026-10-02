@@ -72,6 +72,7 @@ home network.
 | A job was being uploaded | Marked failed ("interrupted by a service restart"); start it again |
 | A job was running on the printer | Keeps running on the printer; the dashboard picks it up again from Moonraker |
 | Printer offline | Dashboard shows "offline" and keeps polling; nothing is sent |
+| Klipper restarts mid-job | The job is marked failed after 15 s ("printer restarted during the job") |
 
 ## Uninstall
 

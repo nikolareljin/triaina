@@ -49,9 +49,13 @@ function renderStatus(s) {
   $("file").textContent = s.filename || "-";
   const pct = Math.round((s.progress || 0) * 100);
   $("bar").style.width = `${pct}%`;
-  $("message").textContent = s.online ? (s.message || (s.state === "printing" ? `${pct}%` : ""))
+  const klipperDown = s.online && s.klippy && s.klippy !== "ready";
+  $("message").textContent = klipperDown ? `Klipper ${s.klippy}: ${s.klippy_message || ""}`
+    : s.online ? (s.message || (s.state === "printing" ? `${pct}%` : ""))
     : `Printer unreachable: ${s.error || ""}`;
   const busy = ["printing", "paused"].includes(s.state);
+  // Shown only when Klipper is not ready: after an emergency stop or an error.
+  $("restart").hidden = !s.online || !s.klippy || s.klippy === "ready";
   document.querySelectorAll("[data-mode]").forEach((b) => { b.disabled = !s.online || busy; });
   document.querySelector('[data-action="pause"]').disabled = s.state !== "printing";
   document.querySelector('[data-action="resume"]').disabled = s.state !== "paused";
@@ -120,6 +124,9 @@ document.querySelectorAll("[data-mode]").forEach((b) => {
 document.querySelectorAll("[data-action]").forEach((b) => {
   b.onclick = () => api("POST", `api/print/${b.dataset.action}`).catch((e) => toast(e.message));
 });
+$("restart").onclick = () => {
+  api("POST", "api/firmware-restart").then(() => toast("Firmware restart sent")).catch((e) => toast(e.message));
+};
 $("estop").onclick = () => {
   if (confirm("Emergency stop halts Klipper immediately. A firmware restart is needed after.")) {
     api("POST", "api/estop").then(() => toast("Emergency stop sent")).catch((e) => toast(e.message));

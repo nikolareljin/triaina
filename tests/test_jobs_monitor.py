@@ -115,3 +115,24 @@ def test_version_ignores_timestamp(store):
     v1, _ = mon.snapshot()
     mon.poll_once()
     assert mon.snapshot()[0] == v1
+
+
+def test_monitor_standby_with_our_file_fails_after_grace(store, monkeypatch):
+    printer = FakePrinter()
+    job = running_job(store)
+    printer.state, printer.filename = "standby", job.remote_name
+    Monitor(printer, store).poll_once()
+    assert store.get(job.id).state == "running"
+    later = time.time() + 60
+    monkeypatch.setattr("triaina.monitor.time.time", lambda: later)
+    Monitor(printer, store).poll_once()
+    assert store.get(job.id).error == "printer restarted during the job"
+
+
+def test_monitor_klipper_down_is_online(store):
+    printer = FakePrinter()
+    printer.klippy_state = "shutdown"
+    snap = Monitor(printer, store).poll_once()
+    assert snap["online"] is True and snap["klippy"] == "shutdown"
+    printer.online = False
+    assert Monitor(printer, store).poll_once()["online"] is False

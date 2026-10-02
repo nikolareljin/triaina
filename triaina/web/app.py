@@ -201,8 +201,11 @@ def create_app(
                 output.write_text("\n".join(process_lines(lines, opts)) + "\n", encoding="utf-8")
             else:
                 shutil.copyfile(source, output)
-        except OSError as exc:
-            return jobs.update(job.id, state="failed", error=str(exc)).to_dict()
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - any failure must leave a failed job, not a ready one
+            log.exception("preparing job %s failed", job.id)
+            return jobs.update(job.id, state="failed", error=f"preparation failed: {exc}").to_dict()
         return jobs.update(
             job.id, source=str(source), output=str(output), remote_name=remote
         ).to_dict()
@@ -224,8 +227,10 @@ def create_app(
             jobs.update(job.id, state="sending")
         try:
             client.upload(Path(job.output), start=True)
-        except (ApiError, OSError) as exc:
+        except Exception as exc:  # noqa: BLE001 - never leave a job stuck in "sending"
             jobs.update(job.id, state="failed", error=str(exc))
+            if not isinstance(exc, (ApiError, OSError)):
+                log.exception("starting job %s failed", job.id)
             raise HTTPException(502, str(exc)) from exc
         job = jobs.update(job.id, state="running")
         monitor.poll_once()
@@ -256,6 +261,12 @@ def create_app(
         if action not in ("pause", "resume", "cancel"):
             raise HTTPException(404, "action is pause, resume or cancel")
         api_call(client.print_action, action)
+        return monitor.poll_once()
+
+    @app.post("/api/firmware-restart", dependencies=auth)
+    def firmware_restart() -> dict:
+        """The way back after an emergency stop or a Klipper error."""
+        api_call(client.firmware_restart)
         return monitor.poll_once()
 
     @app.post("/api/estop", dependencies=auth)

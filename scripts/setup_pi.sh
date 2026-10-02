@@ -209,10 +209,22 @@ install_service() {
     run $SUDO mkdir -p "$INSTALL_DIR"
     run $SUDO python3 -m venv "$INSTALL_DIR/.venv"
   fi
-  # A local path is always rebuilt, so this also updates after `git pull`.
+  # Build the wheel as the invoking user, then install only the wheel as root.
+  # `sudo pip install <clone>` would build inside the clone and leave
+  # root-owned build/ and *.egg-info behind in the user's working copy.
+  local wheel_dir builder
+  builder="$VENV_DIR/bin/python"
+  [[ -x "$builder" ]] || builder="python3"
+  wheel_dir="$(mktemp -d)"
+  log_info "building triaina wheel"
+  run "$builder" -m pip wheel --quiet --no-deps --wheel-dir "$wheel_dir" "$REPO_ROOT"
   log_info "installing triaina into $INSTALL_DIR/.venv"
   run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet --upgrade pip
-  run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet "$REPO_ROOT"
+  # --force-reinstall --no-deps first: the version stays 0.1.0 between commits,
+  # so pip would otherwise keep the old code after `git pull`. Then resolve deps.
+  run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet --force-reinstall --no-deps "$wheel_dir"/triaina-*.whl
+  run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet "$wheel_dir"/triaina-*.whl
+  rm -rf "$wheel_dir"
 
   # Never overwrite a config the user has edited.
   if $CHECK_SUDO test -f "$CONFIG_FILE"; then
