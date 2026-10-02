@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fakes import FakePrinter
+from triaina.printer import ApiError
 from triaina.config import Config
 from triaina.jobs import JobStore
 from triaina.monitor import Monitor
@@ -276,3 +277,17 @@ def test_unexpected_upload_error_does_not_leave_job_sending(env):
     # Not blocked by a stuck "sending" job.
     printer.upload = lambda path, start: None
     assert client.post(f"/api/jobs/{job2['id']}/start", json={"confirm": True}).status_code == 200
+
+
+def test_unknown_print_state_refuses_start(env, monkeypatch):
+    """Klipper says ready but the object query failed: state is unknown, so no start."""
+    _, printer, client, app = env
+    job = upload(client, "print-gcode").json()
+
+    def broken():
+        raise ApiError("GET /printer/objects/query: HTTP 500")
+
+    monkeypatch.setattr(printer, "snapshot", broken)
+    r = client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True})
+    assert r.status_code == 409 and "unknown" in r.json()["detail"]
+    assert printer.uploads == []

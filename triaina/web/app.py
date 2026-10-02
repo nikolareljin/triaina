@@ -36,7 +36,9 @@ log = logging.getLogger("triaina.web")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 GCODE_SUFFIXES = {".gcode", ".gco", ".g", ".nc", ".ngc", ".txt"}
-BUSY_STATES = ("printing", "paused")
+#: print_stats states in which starting a job or switching mode is safe.
+#: Anything else, including "unknown" when the state could not be read, is refused.
+IDLE_STATES = ("standby", "complete", "cancelled", "error")
 
 
 def fluidd_url(host: str) -> str:
@@ -115,7 +117,7 @@ def create_app(
             raise HTTPException(
                 409, f"Klipper is {snap.get('klippy')}: {snap.get('klippy_message')}"
             )
-        if snap.get("state") in BUSY_STATES:
+        if snap.get("state") not in IDLE_STATES:
             raise HTTPException(409, f"printer is {snap.get('state')}")
 
     def api_call(fn, *args) -> None:
@@ -201,9 +203,8 @@ def create_app(
                 output.write_text("\n".join(process_lines(lines, opts)) + "\n", encoding="utf-8")
             else:
                 shutil.copyfile(source, output)
-        except (
-            Exception
-        ) as exc:  # noqa: BLE001 - any failure must leave a failed job, not a ready one
+        # Any failure must leave a failed job, never a ready one with no output.
+        except Exception as exc:  # noqa: BLE001
             log.exception("preparing job %s failed", job.id)
             return jobs.update(job.id, state="failed", error=f"preparation failed: {exc}").to_dict()
         return jobs.update(
