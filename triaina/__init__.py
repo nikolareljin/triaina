@@ -5,4 +5,4 @@ scripts/ run on a bare Pi. The service (`config`, `jobs`, `monitor`, `web`)
 needs the dependencies in pyproject.toml.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
