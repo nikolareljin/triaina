@@ -29,8 +29,8 @@ jobs:
     with:
       python_version: "3.11"
       fetch_depth: 1
-      # The apt tools let the PDF/EPS/PNG converter tests run instead of skipping.
-      install_command: "sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils ghostscript potrace && python -m pip install -r requirements.txt"
+      # The apt tools let the converter and slicer tests run instead of skipping.
+      install_command: "sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils ghostscript potrace prusa-slicer && python -m pip install -r requirements.txt"
       lint_command: "python -m black --check triaina scripts tests && python -m flake8 triaina scripts tests"
       test_command: "python -m pytest"
       timeout_minutes: 10

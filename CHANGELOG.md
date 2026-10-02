@@ -3,9 +3,8 @@
 ## [Unreleased]
 
 - Docs: the printer is wired-only (RJ45, no built-in Wi-Fi); wiring now goes through a small unmanaged switch (TP-Link TL-SF1005D recommended) and the parts list has a Network section.
-
+- Print jobs built on the Pi: a 2D design extruded into a plate, STL/3MF models, and a parametric drag-knife clamp (clamp ears with an M3 screw, slotted mounting holes, layouts that cannot work refused); sliced with PrusaSlicer and a shipped Neptune 4 profile. Models are measured and shrunk to fit the printer (bed, skirt and height), with a scale option for unit-less STL. Starting a print in cutter mode runs PRINTER_MODE first.
 - Cut designs from the dashboard: SVG, DXF, PDF, AI, EPS, PNG and JPG are converted on the Pi with blade-offset compensation, inner-first cut order, optional weeding border, size/fit options and an SVG preview. `setup_pi.sh --service` installs poppler-utils, ghostscript and potrace.
-
 - Dashboard service (`python -m triaina serve`): live printer state, mode switch, cut and print G-code jobs with a physical-setup confirmation, pause/resume/cancel, emergency stop, camera. systemd unit, `setup_pi.sh --service`, optional token.
 - Code moved into the `triaina` package (`preprocess`, `printer`); `scripts/*.py` are thin CLI wrappers.
 - `mode_switch.py upload FILE [--start]`: upload a job to Moonraker or OctoPrint, optionally start it.

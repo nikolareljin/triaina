@@ -55,6 +55,7 @@ class FakePrinter:
         if self.fail_upload:
             raise ApiError("POST /server/files/upload: HTTP 500")
         self.uploads.append((path.name, path.read_text(), start))
+        self.mode_at_upload = self.mode
         if start:
             self.state, self.filename = "printing", path.name
 

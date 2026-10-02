@@ -31,7 +31,13 @@ from triaina.convert import FORMATS, ConversionError
 from triaina.cut import pipeline as cut_pipeline
 from triaina.cut.paths import LayoutError
 from triaina.cut.pipeline import CutOptions
-from triaina.jobs import KINDS, JobStore, safe_name
+from triaina.convert import RasterOptions
+from triaina.model import ModelError
+from triaina.model import pipeline as model_pipeline
+from triaina.model.mount import MountOptions
+from triaina.model.pipeline import MODEL_SUFFIXES
+from triaina.model.slice import SliceOptions
+from triaina.jobs import KINDS, PRINT_KINDS, JobStore, safe_name
 from triaina.monitor import Monitor
 from triaina.preprocess import Options, process_lines, xy_extents
 from triaina.printer import ApiError, MoonrakerClient
@@ -106,6 +112,7 @@ def create_app(
             yield
         finally:
             converter.shutdown(wait=False, cancel_futures=True)
+            slicer_pool.shutdown(wait=False, cancel_futures=True)
             if start_monitor:
                 monitor.stop()
 
@@ -135,12 +142,16 @@ def create_app(
     start_lock = threading.Lock()
     # One conversion at a time: a Pi 3 has four cores and 1 GB.
     converter = ThreadPoolExecutor(max_workers=1, thread_name_prefix="triaina-convert")
-    app.state.converter = converter
+    # Slicing can take many minutes on a Pi 3; it gets its own worker so a cut
+    # conversion never waits behind it.
+    slicer_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="triaina-slice")
+    app.state.converter, app.state.slicer_pool = converter, slicer_pool
 
     # -- helpers -------------------------------------------------------------
 
-    def printer_idle() -> None:
-        """Raise 409 unless the printer is online and not running a job.
+    def printer_idle() -> dict:
+        """Raise 409 unless the printer is online and not running a job;
+        return the fresh snapshot.
 
         Polls now rather than trusting the last snapshot: a print started from
         Fluidd a moment ago must not be missed."""
@@ -153,6 +164,7 @@ def create_app(
             )
         if snap.get("state") not in IDLE_STATES:
             raise HTTPException(409, f"printer is {snap.get('state')}")
+        return snap
 
     def api_call(fn, *args) -> None:
         try:
@@ -253,10 +265,49 @@ def create_app(
             # afterwards; on a Pi they would fill the SD card job by job.
             shutil.rmtree(output.parent / "work", ignore_errors=True)
 
+    def build_print(job_id: int, kind: str, source: Path, output: Path, p: dict) -> None:
+        """Converter thread: extrude/build, slice. Slicing on a Pi 3 takes minutes."""
+        out_dir = output.parent
+        try:
+            if kind == "print-design":
+                result = model_pipeline.print_design(
+                    source,
+                    out_dir,
+                    p["height"],
+                    p["width"],
+                    p["fit"],
+                    p["raster"],
+                    p["slicing"],
+                    (cfg.cut.bed_x, cfg.cut.bed_y),
+                )
+            elif kind == "print-model":
+                result = model_pipeline.print_model(source, out_dir, p["slicing"])
+            else:
+                result = model_pipeline.knife_mount(p["mount"], out_dir, p["slicing"])
+            shutil.move(str(result.gcode), output)
+            summary = dict(result.summary, warnings=result.warnings, has_stl=result.stl is not None)
+            jobs.update(job_id, state="ready", summary=json.dumps(summary))
+        except (ConversionError, LayoutError, ModelError, ValueError) as exc:
+            jobs.update(job_id, state="failed", error=str(exc))
+        except Exception as exc:  # noqa: BLE001 - a job must never stay "converting"
+            log.exception("building print job %s failed", job_id)
+            jobs.update(job_id, state="failed", error=f"build failed: {exc}")
+        finally:
+            shutil.rmtree(out_dir / "work", ignore_errors=True)
+
+    @app.get("/api/jobs/{job_id}/model.stl", dependencies=auth)
+    def job_model(job_id: int):
+        job = job_or_404(job_id)
+        job_dir = data_dir / "jobs" / str(job.id)
+        for name in ("model.stl", "knife-mount.stl"):
+            if (job_dir / name).is_file():
+                return FileResponse(job_dir / name, filename=f"triaina-{job.id}-{name}")
+        raise HTTPException(404, "no model for this job")
+
     @app.post("/api/jobs", dependencies=auth, status_code=201)
     def create_job(
         kind: str = Form(...),
-        file: UploadFile = File(...),
+        file: Optional[UploadFile] = File(None),
         width: Optional[float] = Form(None),
         fit: bool = Form(False),
         weed: float = Form(0.0),
@@ -264,14 +315,74 @@ def create_app(
         cut_feed: Optional[float] = Form(None),
         threshold: int = Form(128),
         invert: bool = Form(False),
+        height: float = Form(3.0),
+        layer_height: float = Form(0.2),
+        infill: int = Form(20),
+        holder_diameter: float = Form(11.5),
+        bolt_spacing: float = Form(30.0),
+        standoff: float = Form(12.0),
+        scale: float = Form(100.0),
+        keep_size: bool = Form(False),
     ) -> dict:
         if kind not in KINDS:
             raise HTTPException(422, f"kind must be one of {sorted(KINDS)}")
-        name = safe_name(file.filename or "upload")
-        suffix = Path(name).suffix.lower()
-        allowed = DESIGN_SUFFIXES if kind == "cut-design" else GCODE_SUFFIXES
-        if suffix not in allowed:
-            raise HTTPException(415, f"{KINDS[kind]} takes {', '.join(sorted(allowed))}")
+        if kind == "knife-mount":
+            # Built from parameters; no file.
+            name, suffix = "knife-mount.stl", ".stl"
+        else:
+            if file is None:
+                raise HTTPException(422, f"{KINDS[kind]} needs a file")
+            name = safe_name(file.filename or "upload")
+            suffix = Path(name).suffix.lower()
+            allowed = {
+                "cut-design": DESIGN_SUFFIXES,
+                "print-design": DESIGN_SUFFIXES,
+                "print-model": MODEL_SUFFIXES,
+            }.get(kind, GCODE_SUFFIXES)
+            if suffix not in allowed:
+                raise HTTPException(415, f"{KINDS[kind]} takes {', '.join(sorted(allowed))}")
+        print_params = None
+        if kind in ("print-design", "print-model", "knife-mount"):
+            limits = (
+                ("width", width, 1, 220),
+                ("height", height, 0.4, 100),
+                ("layer_height", layer_height, 0.05, 0.32),
+                ("infill", infill, 0, 100),
+                ("threshold", threshold, 0, 255),
+                ("scale", scale, 1, 100000),
+            )
+            bad = [
+                f"{n} must be {lo}-{hi}"
+                for n, v, lo, hi in limits
+                if v is not None and not lo <= v <= hi
+            ]
+            if bad:
+                raise HTTPException(422, "; ".join(bad))
+            mount = MountOptions(
+                holder_diameter=holder_diameter, bolt_spacing=bolt_spacing, standoff=standoff
+            )
+            if kind == "knife-mount":
+                try:
+                    mount.check()
+                except ModelError as exc:
+                    raise HTTPException(422, str(exc)) from exc
+            print_params = {
+                "width": width,
+                "fit": fit,
+                "height": height,
+                "raster": RasterOptions(threshold, invert),
+                "slicing": SliceOptions(
+                    layer_height=layer_height,
+                    infill=infill,
+                    center=(cfg.cut.bed_x / 2, cfg.cut.bed_y / 2),
+                    slicer=cfg.print.slicer or None,
+                    scale_percent=scale,
+                    autofit=not keep_size,
+                    bed=(cfg.cut.bed_x, cfg.cut.bed_y, cfg.print.max_z),
+                    margin=cfg.cut.margin,
+                ),
+                "mount": mount,
+            }
         cut_opts = None
         if kind == "cut-design":
             cut_opts = CutOptions(
@@ -310,22 +421,27 @@ def create_app(
         job_dir = data_dir / "jobs" / str(job.id)
         job_dir.mkdir(parents=True, exist_ok=True)
         source = job_dir / f"source{suffix}"
-        with source.open("wb") as out:
-            copied = 0
-            while chunk := file.file.read(1024 * 1024):
-                copied += len(chunk)
-                if copied > MAX_UPLOAD_BYTES:
-                    out.close()
-                    shutil.rmtree(job_dir, ignore_errors=True)
-                    jobs.update(job.id, state="failed", error="file too large")
-                    raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES} bytes")
-                out.write(chunk)
+        if file is not None:
+            with source.open("wb") as out:
+                copied = 0
+                while chunk := file.file.read(1024 * 1024):
+                    copied += len(chunk)
+                    if copied > MAX_UPLOAD_BYTES:
+                        out.close()
+                        shutil.rmtree(job_dir, ignore_errors=True)
+                        jobs.update(job.id, state="failed", error="file too large")
+                        raise HTTPException(413, f"file larger than {MAX_UPLOAD_BYTES} bytes")
+                    out.write(chunk)
 
         # The output is named as it will appear on the printer, so the
         # multipart upload carries the right name.
         remote = f"triaina-{job.id}-{Path(name).stem}.gcode"
         output = job_dir / remote
         jobs.update(job.id, source=str(source), output=str(output), remote_name=remote)
+        if print_params is not None:
+            jobs.update(job.id, state="converting")
+            slicer_pool.submit(build_print, job.id, kind, source, output, print_params)
+            return jobs.get(job.id).to_dict()
         if cut_opts is not None:
             cut_opts.area, area_warning = knife_area(cfg, monitor.poll_once())
             if area_warning:
@@ -366,7 +482,11 @@ def create_app(
                 raise HTTPException(409, "job already started")
             if jobs.active():
                 raise HTTPException(409, "another job is active")
-            printer_idle()
+            snap = printer_idle()
+            if job.kind in PRINT_KINDS and snap.get("mode") == "cutter":
+                # The cutter's G-code offset would shift the print by the knife
+                # offset. The user confirmed the knife is off; switch back.
+                api_call(client.run_gcode, "PRINTER_MODE")
             jobs.update(job.id, state="sending")
         try:
             client.upload(Path(job.output), start=True)

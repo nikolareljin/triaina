@@ -87,6 +87,8 @@ function renderJobs(jobs) {
       if (s.width_mm != null) parts.push(`${s.width_mm} x ${s.height_mm} mm`);
       if (s.paths != null) parts.push(`${s.paths} paths`);
       if (s.estimate_s != null) parts.push(`~${fmtTime(s.estimate_s)}`);
+      if (s.filament_g != null) parts.push(`${s.filament_g} g filament`);
+      if (s.final_mm) parts.push(`prints ${s.final_mm.join(" x ")} mm`);
       det.append(parts.join(", "));
       for (const w of s.warnings || []) {
         const p = document.createElement("div");
@@ -110,12 +112,19 @@ function renderJobs(jobs) {
       drop.onclick = () => api("DELETE", `api/jobs/${j.id}`).catch((e) => toast(e.message));
       act.append(drop);
     }
-    if (j.summary && j.has_output && j.state !== "failed") {
+    // Previews exist for cut designs only (the cut paths); 3D jobs offer the STL.
+    if (j.kind === "cut-design" && j.summary && j.has_output && j.state !== "failed") {
       const pv = document.createElement("a");
       pv.href = `api/jobs/${j.id}/preview.svg${token ? `?token=${encodeURIComponent(token)}` : ""}`;
       pv.target = "_blank";
       pv.textContent = "Preview";
       act.append(" ", pv);
+    }
+    if (j.summary && j.summary.has_stl && j.has_output) {
+      const st = document.createElement("a");
+      st.href = `api/jobs/${j.id}/model.stl${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      st.textContent = "STL";
+      act.append(" ", st);
     }
     if (j.has_output && j.state !== "converting") {
       const a = document.createElement("a");
@@ -164,18 +173,35 @@ $("estop").onclick = () => {
 const drop = $("drop");
 const input = $("fileinput");
 const HELP = {
+  "print-design": "SVG, DXF, PDF, AI, EPS, PNG or JPG. Closed outlines become a plate of the given thickness (sign, stamp, logo), sliced here.",
+  "print-model": "STL or 3MF, sliced here with the Neptune 4 profile.",
+  "knife-mount": "No file: the drag-knife clamp is generated from the values below and sliced. Check it against your toolhead first.",
   "cut-design": "SVG, DXF, PDF, AI, EPS, PNG or JPG. Converted here with blade-offset compensation; check the preview before starting.",
   "cut-gcode": "G-code from Kiri:Moto, Inkcut, Inkscape or LightBurn, made safe by the preprocessor: heaters off, knife macros, feed cap.",
   "print-gcode": "Sliced G-code for a normal print, sent unchanged. Remove the knife holder first.",
 };
 const ACCEPT = {
+  "print-design": ".svg,.dxf,.pdf,.ai,.eps,.png,.jpg,.jpeg",
+  "print-model": ".stl,.3mf",
   "cut-design": ".svg,.dxf,.pdf,.ai,.eps,.png,.jpg,.jpeg",
   "cut-gcode": ".gcode,.gco,.g,.nc,.ngc,.txt",
   "print-gcode": ".gcode,.gco,.g",
 };
 function kindChanged() {
   const k = $("kind").value;
-  $("designOpts").hidden = k !== "cut-design";
+  const design = k === "cut-design" || k === "print-design";
+  const print3d = ["print-design", "print-model", "knife-mount"].includes(k);
+  $("designOpts").hidden = !design;
+  // Cut-only options inside the design fieldset.
+  for (const n of ["weed", "blade_offset"]) {
+    document.querySelector(`[name="${n}"]`).closest("label").hidden = k !== "cut-design";
+  }
+  $("printOpts").hidden = !print3d;
+  $("heightRow").hidden = k !== "print-design";
+  $("mountOpts").hidden = k !== "knife-mount";
+  $("modelOpts").hidden = k !== "print-model";
+  $("drop").hidden = k === "knife-mount";
+  input.required = k !== "knife-mount";
   $("kindHelp").textContent = HELP[k] || "";
   input.accept = ACCEPT[k] || "";
   const name = input.files[0]?.name || "";
@@ -201,6 +227,10 @@ $("upload").onsubmit = async (e) => {
     const form = new FormData(e.target);
     // Blank fields mean "use the configured default": send nothing for them.
     for (const [k, v] of [...form.entries()]) if (v === "") form.delete(k);
+    // Fields in hidden sections do not apply to this job type.
+    for (const el of e.target.querySelectorAll("[name]")) {
+      if (el.closest("[hidden]") && el.name !== "kind") form.delete(el.name);
+    }
     const job = await api("POST", "api/jobs", form);
     const what = { failed: `Failed: ${job.error}`, converting: `Job #${job.id} converting...` };
     toast(what[job.state] || `Job #${job.id} ready`);
