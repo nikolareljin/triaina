@@ -64,6 +64,14 @@ class CutConfig:
 
 
 @dataclass
+class PrintConfig:
+    #: Slicer command; empty = first of prusa-slicer / PrusaSlicer on PATH.
+    slicer: str = ""
+    #: Build height, mm (bed size comes from [cut] bed_x / bed_y).
+    max_z: float = 265.0
+
+
+@dataclass
 class CameraConfig:
     #: MJPEG stream, e.g. crowsnest's http://<host>/webcam/?action=stream
     stream_url: str = ""
@@ -76,6 +84,7 @@ class Config:
     paths: PathsConfig = field(default_factory=PathsConfig)
     cut: CutConfig = field(default_factory=CutConfig)
     camera: CameraConfig = field(default_factory=CameraConfig)
+    print: PrintConfig = field(default_factory=PrintConfig)
     source: Optional[Path] = None
 
     @property

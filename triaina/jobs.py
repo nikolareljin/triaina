@@ -28,7 +28,14 @@ KINDS = {
     "cut-gcode": "Cut G-code",
     # A design file converted to cut G-code here: SVG, DXF, PDF, AI, EPS, PNG, JPG.
     "cut-design": "Cut design",
+    # A 2D design extruded into a plate (sign, stamp, logo) and sliced here.
+    "print-design": "Print design (3D)",
+    # An STL or 3MF model sliced here.
+    "print-model": "Print model",
+    # The parametric drag-knife clamp, built and sliced here.
+    "knife-mount": "Print knife mount",
 }
+PRINT_KINDS = ("print-gcode", "print-design", "print-model", "knife-mount")
 STATES = ("converting", "ready", "sending", "running", "done", "failed", "cancelled")
 ACTIVE = ("sending", "running")
 
@@ -37,6 +44,9 @@ CONFIRM_TEXT = {
     "print-gcode": "Knife holder removed, bed clear, filament loaded.",
     "cut-gcode": "Knife holder fitted, hotend below 50 C, vinyl on the mat.",
     "cut-design": "Knife holder fitted, hotend below 50 C, vinyl on the mat.",
+    "print-design": "Knife holder removed, bed clear, filament loaded.",
+    "print-model": "Knife holder removed, bed clear, filament loaded.",
+    "knife-mount": "Knife holder removed, bed clear, filament loaded.",
 }
 
 

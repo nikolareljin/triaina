@@ -5,13 +5,23 @@
 <figcaption>The macros shift every move by (offset_x, offset_y) so job coordinates land on the knife tip.</figcaption>
 </figure>
 
+## Generate the mount
+
+The dashboard can generate and print a clamp for the holder: job type **Print
+knife mount**, set the holder diameter, the spacing of the two mounting screws
+and how far in front of the plate the holder sits (standoff). It is a generic
+clamp (a collar with a clamp screw on a plate with two slotted M3 holes), not
+a Neptune 4 specific part: measure your toolhead and check the STL before
+printing. See [Printing from the dashboard](../use/printing.md).
+
 ## Holder
 
-1. Print a clamp for the holder body. No mount is published for the Neptune 4
-   toolhead at the time of writing; remix a holder clamp from
+1. Print a clamp for the holder body: generate one as above, or remix a holder
+   clamp from
    [Printables](https://www.printables.com/search/models?q=drag%20knife%20holder)
-   to bolt onto the toolhead's side screws. Print in PETG or ABS (PLA creeps
-   near the hotend).
+   to bolt onto the toolhead's side screws. PETG or ABS lasts longer than PLA
+   next to the hotend; the shipped slicer profile is for PLA, so for PETG raise
+   the temperatures in `triaina/data/prusaslicer_neptune4.ini` (about 240/80 C).
 2. Mount the holder vertical, with the blade tip 2-4 mm **below** the nozzle
    tip. The nozzle must never reach the mat: while cutting, the knife is the
    lowest point of the toolhead. Measure the drop with calipers and enter it as

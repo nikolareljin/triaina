@@ -30,6 +30,7 @@ the [triaina macros](../setup/klipper.md).
 
     | Type | Accepts | What happens |
     |---|---|---|
+    | Print design (3D), Print model, Print knife mount | 2D file, STL/3MF, or nothing | Built and sliced on the Pi; see [Printing from the dashboard](printing.md) |
     | Cut design | SVG, DXF, PDF, AI, EPS, PNG, JPG | Converted on the Pi with blade-offset compensation and a preview; see [Cutting a design file](designs.md) |
     | Cut G-code | G-code from Kiri:Moto, Inkcut, Inkscape, LightBurn | Run through the [preprocessor](../reference/gcode-preprocessor.md): heaters and extruder removed, knife macros added, feed capped. Refused if a move is beyond the knife's reach (see [knife reach](designs.md#what-happens)) |
     | Print G-code | Sliced G-code | Sent unchanged |
@@ -66,6 +67,7 @@ The dashboard is a client of the service's REST API. Interactive docs are at
 | DELETE | `/api/jobs/{id}` | Discard a ready job |
 | GET | `/api/jobs/{id}/output` | Generated G-code |
 | GET | `/api/jobs/{id}/preview.svg` | Cut preview (design jobs) |
+| GET | `/api/jobs/{id}/model.stl` | Generated model (3D jobs) |
 | POST | `/api/mode/{cutter,printer}` | Mode switch |
 | POST | `/api/print/{pause,resume,cancel}` | Print control |
 | POST | `/api/estop` | Emergency stop |

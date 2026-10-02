@@ -19,6 +19,8 @@ dependencies = [
   "svgelements>=1.9",
   "ezdxf>=1.1",
   "pillow>=10",
+  # 3D: extrusion and the knife mount (exact booleans; arm64 wheels exist).
+  "manifold3d>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +40,7 @@ include = ["triaina*"]
 version = { attr = "triaina.__version__" }
 
 [tool.setuptools.package-data]
+"triaina.data" = ["*.ini"]
 "triaina.web" = ["static/*"]
 
 [tool.black]
