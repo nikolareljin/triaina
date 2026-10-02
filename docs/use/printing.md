@@ -53,7 +53,10 @@ klipper flavour needs a newer PrusaSlicer than Raspberry Pi OS may ship), PLA
 215/60 C first layer,
 gyroid infill, a purge line at the left edge. PrusaSlicer's own Elegoo profiles
 stop at the Neptune 3, so this profile is written from the Neptune 4 specs;
-check it against your printer and edit the file to taste.
+check it against your printer and edit the file to taste. The start G-code does
+not probe a bed mesh: it relies on the mesh saved as `default`, which Klipper
+loads at startup. Run a bed mesh calibration from Fluidd and `SAVE_CONFIG`
+once.
 
 A Pi 3 slices a small part in a minute or two; a large model can take much
 longer (the limit is 30 minutes). Slicing runs on its own worker, so cut jobs
@@ -67,6 +70,8 @@ start dialog asks you to confirm the knife holder is removed.
 
 ## Extruding a design
 
-Only closed shapes have an inside: open lines are skipped with a warning. Holes
-stay holes (even-odd fill), so lettering keeps its counters. For a stamp,
+Only closed shapes have an inside: open lines are skipped with a warning.
+Holes are decided by nesting: a shape inside an odd number of others is a hole,
+so lettering keeps its counters whichever way it was drawn, while shapes that
+merely overlap (two circles in a logo) are joined rather than cut. For a stamp,
 mirror the design before uploading.

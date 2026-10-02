@@ -54,11 +54,13 @@ class MountOptions:
             raise ModelError(
                 "bolt holes do not fit the plate: widen the plate or reduce the spacing"
             )
-        if (
-            self.standoff < bore / 2 + self.wall - self.plate_thickness / 2
-            or self.standoff < bore / 2 + 1
-        ):
-            raise ModelError("standoff too small: the collar would cut into the plate")
+        outer_r = bore / 2 + self.wall
+        if self.standoff < bore / 2 + 1:
+            raise ModelError("standoff too small: the bore would cut into the plate")
+        if self.plate_thickness + self.standoff - outer_r < 0:
+            raise ModelError(
+                "standoff too small: the collar would stick out behind the plate into the toolhead"
+            )
 
 
 def build(opts: MountOptions):

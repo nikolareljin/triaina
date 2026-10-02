@@ -210,3 +210,36 @@ def test_real_3mf_input(tmp_path):
     assert stats["final_mm"] == [40.0, 26.9, 20.0]
     text = (tmp_path / "m.gcode").read_text()
     assert "G92 E0" in text and "M73 P" in text
+
+
+def _circle(cx, cy=0.0, r=10.0, n=64, ccw=True):
+    import math
+
+    pts = [
+        (cx + r * math.cos(2 * math.pi * k / n), cy + r * math.sin(2 * math.pi * k / n))
+        for k in range(n)
+    ]
+    pts = pts if ccw else pts[::-1]
+    return pts + [pts[0]]
+
+
+class TestNesting:
+    def test_overlapping_shapes_merge(self):
+        # Even-odd would turn the lens-shaped overlap into a hole (449 mm2).
+        solid, _ = extrude([_circle(0), _circle(12, ccw=False)], 1)
+        assert solid.volume() == pytest.approx(538.1, abs=1)
+
+    def test_same_winding_hole_is_a_hole(self):
+        solid, _ = extrude([_circle(0), _circle(0, r=5)], 1)
+        assert solid.volume() == pytest.approx(235.2, abs=1)
+
+    def test_island_inside_hole(self):
+        solid, _ = extrude([_circle(0, r=20), _circle(0, r=10), _circle(0, r=5)], 1)
+        assert solid.volume() == pytest.approx(1019.4, abs=1)
+
+
+def test_mount_collar_never_behind_plate():
+    with pytest.raises(ModelError, match="behind the plate"):
+        MountOptions(holder_diameter=10, wall=10, plate_thickness=3, standoff=7).check()
+    part = build(MountOptions())
+    assert part.bounding_box()[1] == pytest.approx(0)  # nothing behind the plate face
