@@ -7,7 +7,7 @@ blade-offset compensation -> G-code with the knife macros -> preprocessor
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +36,10 @@ class CutOptions:
     margin: float = 5.0
     bed_x: float = 225.0
     bed_y: float = 225.0
+    #: Where the knife can cut, machine coordinates (min_x, min_y, max_x, max_y).
+    #: None = the whole bed. The service narrows it by the printer's axis
+    #: limits and the knife offset, so the nozzle never leaves its range.
+    area: Optional[tuple[float, float, float, float]] = None
     #: Weeding border gap, mm. 0 = no border.
     weed: float = 0.0
     blade_offset: float = 0.25
@@ -47,6 +51,8 @@ class CutOptions:
     max_feed: float = 1500.0
     threshold: int = 128
     invert: bool = False
+    #: Warnings from the caller (e.g. area not checked), shown with the job.
+    extra_warnings: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -78,6 +84,7 @@ def to_gcode(axis_paths: list[Polyline], cut_feed: float, travel_feed: float) ->
 def preview(design: list[Polyline], axis: list[Polyline], opts: CutOptions) -> str:
     """Bed, design (what you get) and travel moves, Y flipped for screen."""
     w, h = opts.bed_x, opts.bed_y
+    ax0, ay0, ax1, ay1 = opts.area or (0.0, 0.0, w, h)
 
     def pts(path):
         return " ".join(f"{x:.2f},{h - y:.2f}" for x, y in path)
@@ -92,9 +99,9 @@ def preview(design: list[Polyline], axis: list[Polyline], opts: CutOptions) -> s
         f'width="{w}mm" height="{h}mm">',
         f'<rect x="0" y="0" width="{w}" height="{h}" fill="#f8fafc" stroke="#94a3b8"'
         ' stroke-width="0.5"/>',
-        f'<rect x="{opts.margin}" y="{opts.margin}" width="{w - 2 * opts.margin}" '
-        f'height="{h - 2 * opts.margin}" fill="none" stroke="#cbd5e1" stroke-width="0.3" '
-        'stroke-dasharray="2 2"/>',
+        f'<rect x="{ax0 + opts.margin}" y="{h - ay1 + opts.margin}" '
+        f'width="{ax1 - ax0 - 2 * opts.margin}" height="{ay1 - ay0 - 2 * opts.margin}" '
+        'fill="none" stroke="#cbd5e1" stroke-width="0.3" stroke-dasharray="2 2"/>',
     ]
     for t in travel:
         parts.append(
@@ -115,7 +122,8 @@ def run(source: Path, work_dir: Path, opts: CutOptions) -> CutResult:
         raise LayoutError("an image has no real size: set a width in mm, or shrink to fit")
     # The weeding border must stay inside the margin too, so reserve it there.
     weed = max(opts.weed, 0.0)
-    paths = place(design.paths, (opts.bed_x, opts.bed_y), opts.margin + weed, opts.width, opts.fit)
+    area = opts.area or (0.0, 0.0, opts.bed_x, opts.bed_y)
+    paths = place(design.paths, area, opts.margin + weed, opts.width, opts.fit)
     if weed > 0:
         paths = paths + [weed_border(paths, weed)]
     ordered = order(paths)

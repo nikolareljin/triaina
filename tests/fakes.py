@@ -15,6 +15,10 @@ class FakePrinter:
         self.uploads = []
         self.fail_upload = False
         self.klippy_state = "ready"
+        # Neptune-4-like limits and the shipped macro offset (knife 32 mm left).
+        self.axis_minimum = [-2.0, -3.0, -2.0, 0.0]
+        self.axis_maximum = [235.0, 230.0, 265.0, 0.0]
+        self.knife_offset = [32.0, -5.0]
 
     def snapshot(self):
         if not self.online:
@@ -35,6 +39,9 @@ class FakePrinter:
             "homed_axes": "xyz",
             "mode": self.mode,
             "blade_down": False,
+            "axis_minimum": self.axis_minimum,
+            "axis_maximum": self.axis_maximum,
+            "knife_offset": self.knife_offset,
         }
 
     def run_gcode(self, script):

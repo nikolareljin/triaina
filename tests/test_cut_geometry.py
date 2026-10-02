@@ -104,22 +104,22 @@ def test_clean_merges_and_drops():
 
 
 def test_place_scales_to_width_and_margin():
-    placed = place([SQUARE], bed=(225, 225), margin=5, width=50)
+    placed = place([SQUARE], area=(0, 0, 225, 225), margin=5, width=50)
     b = bounds(placed)
     assert (b.min_x, b.min_y, b.width, b.height) == pytest.approx((5, 5, 50, 50))
 
 
 def test_place_refuses_too_big_unless_fit():
     big = [[(0, 0), (500, 0), (500, 100)]]
-    with pytest.raises(LayoutError, match="bed allows"):
-        place(big, bed=(225, 225), margin=5)
-    b = bounds(place(big, bed=(225, 225), margin=5, fit=True))
+    with pytest.raises(LayoutError, match="knife can reach"):
+        place(big, area=(0, 0, 225, 225), margin=5)
+    b = bounds(place(big, area=(0, 0, 225, 225), margin=5, fit=True))
     assert b.width == pytest.approx(215)
 
 
 def test_place_rejects_empty():
     with pytest.raises(LayoutError):
-        place([], bed=(225, 225), margin=5)
+        place([], area=(0, 0, 225, 225), margin=5)
 
 
 def test_flip_y_and_weed_border():
@@ -165,7 +165,7 @@ def test_order_is_fast_for_many_shapes():
 
 
 def test_fit_never_enlarges():
-    small = place([SQUARE], bed=(225, 225), margin=5, fit=True)
+    small = place([SQUARE], area=(0, 0, 225, 225), margin=5, fit=True)
     assert bounds(small).width == pytest.approx(20)
 
 

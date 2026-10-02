@@ -29,6 +29,13 @@ its format fail, with the `apt install` line in the error.
 | Image threshold | 128 | PNG/JPG: pixels darker than this are the design |
 | Light on dark | off | PNG/JPG: trace light shapes on a dark background |
 
+**Knife reach.** The knife sits beside the nozzle, so near one edge of the bed
+the nozzle would leave its axis range before the knife gets there. When the
+printer is online the service reads its axis limits and the knife offset from
+`_TRIAINA_VARS` and places the design only where both fit. For example, with the shipped
+`offset_x = 32` and an X axis maximum of 235 mm, the knife reaches X 203 at most. If the
+printer is offline the job says the area was not checked.
+
 Bed size, margin, corner cutoff, overcut and feeds come from the
 [service config](../setup/service.md#configuration).
 

@@ -92,22 +92,27 @@ def flip_y(paths: list[Polyline]) -> list[Polyline]:
 
 def place(
     paths: list[Polyline],
-    bed: tuple[float, float],
+    area: tuple[float, float, float, float],
     margin: float,
     width: float | None = None,
     fit: bool = False,
 ) -> list[Polyline]:
-    """Scale (to `width`, or down to fit the bed when `fit`) and move the
-    design's lower-left corner to (margin, margin).
+    """Scale (to `width`, or down to fit when `fit`) and move the design's
+    lower-left corner to the area's lower-left plus `margin`.
 
-    Raises LayoutError if the result does not fit the bed: a design is never
-    shrunk silently, because a sticker at the wrong size is a wasted sheet.
+    `area` is (min_x, min_y, max_x, max_y): where the knife can cut, in machine
+    coordinates. Raises LayoutError if the result does not fit: a design is
+    never shrunk silently, because a sticker at the wrong size is a wasted sheet.
     """
     paths = clean(paths)
     b = bounds(paths)
-    usable_w, usable_h = bed[0] - 2 * margin, bed[1] - 2 * margin
+    x0, y0, x1, y1 = area
+    usable_w, usable_h = (x1 - x0) - 2 * margin, (y1 - y0) - 2 * margin
     if usable_w <= 0 or usable_h <= 0:
-        raise LayoutError(f"margin {margin} mm leaves no room on a {bed[0]} x {bed[1]} mm bed")
+        raise LayoutError(
+            f"margin {margin} mm leaves no room in the"
+            f" {x1 - x0:.0f} x {y1 - y0:.0f} mm cutting area"
+        )
     scale = 1.0
     if width is not None:
         if width <= 0:
@@ -125,10 +130,11 @@ def place(
     w, h = b.width * scale, b.height * scale
     if w > usable_w + 1e-6 or h > usable_h + 1e-6:
         raise LayoutError(
-            f"design is {w:.1f} x {h:.1f} mm; the bed allows {usable_w:.1f} x {usable_h:.1f} mm"
-            " (set a smaller width, or fit to bed)"
+            f"design is {w:.1f} x {h:.1f} mm;"
+            f" the knife can reach {usable_w:.1f} x {usable_h:.1f} mm"
+            " (set a smaller width, or fit)"
         )
-    return transform(paths, scale, margin - b.min_x * scale, margin - b.min_y * scale)
+    return transform(paths, scale, x0 + margin - b.min_x * scale, y0 + margin - b.min_y * scale)
 
 
 def weed_border(paths: list[Polyline], gap: float) -> Polyline:

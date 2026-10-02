@@ -22,7 +22,7 @@ def env(tmp_path):
     return cfg, printer, client, app
 
 
-def upload(client, kind, text="G1 X1 Y1 F600\n", name="job.gcode", **kw):
+def upload(client, kind, text="G1 X10 Y10 F600\n", name="job.gcode", **kw):
     return client.post("/api/jobs", data={"kind": kind}, files={"file": (name, text)}, **kw)
 
 
@@ -339,7 +339,7 @@ def test_cut_design_too_big_fails_with_reason(env):
         files={"file": ("big.svg", SVG_SQUARE)},
     )
     job = wait_state(client, r.json()["id"])
-    assert job["state"] == "failed" and "bed allows" in job["error"]
+    assert job["state"] == "failed" and "knife can reach" in job["error"]
 
 
 def test_cut_design_rejects_gcode_and_gcode_rejects_svg(env):
@@ -466,3 +466,53 @@ def test_finished_job_files_can_be_deleted(env):
     assert client.get(f"/api/jobs/{job['id']}").json()["state"] == "done"
     out = client.delete(f"/api/jobs/{job['id']}").json()
     assert out["state"] == "done" and out["has_output"] is False
+
+
+def test_knife_area_from_limits_and_offset():
+    from triaina.web.app import knife_area
+
+    cfg = Config()
+    snap = {
+        "online": True,
+        "axis_minimum": [-2, -3, -2, 0],
+        "axis_maximum": [235, 230, 265, 0],
+        "knife_offset": [32, -5],
+    }
+    area, warning = knife_area(cfg, snap)
+    # Nozzle = knife + offset must stay in [min, max]; knife must stay on the bed.
+    assert area == (0.0, 2.0, 203.0, 225.0) and warning is None
+    area, warning = knife_area(cfg, {"online": False})
+    assert area == (0.0, 0.0, 225.0, 225.0) and "not checked" in warning
+
+
+def test_design_out_of_knife_reach_is_refused(env):
+    """200 mm wide fits the 225 mm bed but not the knife: nozzle would hit X 237."""
+    svg = SVG_SQUARE.replace('width="40mm"', 'width="40mm"')
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "200"},
+        files={"file": ("wide.svg", svg)},
+    )
+    job = wait_state(env[2], r.json()["id"])
+    assert job["state"] == "failed" and "knife can reach" in job["error"]
+
+
+def test_offline_design_warns_area_unchecked(env):
+    _, printer, client, _ = env
+    printer.online = False
+    r = client.post("/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)})
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "ready"
+    assert any("not checked" in w for w in job["summary"]["warnings"])
+
+
+def test_cut_gcode_out_of_reach_is_refused(env):
+    # X 220 is on the bed but the nozzle would be at 252 with the 32 mm offset.
+    r = upload(env[2], "cut-gcode", "G90\nG0 X10 Y10\nM3\nG1 X220 Y10 F600\nM5\n")
+    assert r.json()["state"] == "failed" and "knife can reach" in r.json()["error"]
+
+
+def test_cut_gcode_in_reach_has_size_summary(env):
+    job = upload(env[2], "cut-gcode", "G90\nG0 X10 Y10\nM3\nG1 X60 Y30 F600\nM5\n").json()
+    assert job["state"] == "ready"
+    assert job["summary"]["width_mm"] == 50.0 and job["summary"]["warnings"] == []

@@ -33,7 +33,7 @@ from triaina.cut.paths import LayoutError
 from triaina.cut.pipeline import CutOptions
 from triaina.jobs import KINDS, JobStore, safe_name
 from triaina.monitor import Monitor
-from triaina.preprocess import Options, process_lines
+from triaina.preprocess import Options, process_lines, xy_extents
 from triaina.printer import ApiError, MoonrakerClient
 
 log = logging.getLogger("triaina.web")
@@ -45,6 +45,30 @@ DESIGN_SUFFIXES = set(FORMATS)
 #: print_stats states in which starting a job or switching mode is safe.
 #: Anything else, including "unknown" when the state could not be read, is refused.
 IDLE_STATES = ("standby", "complete", "cancelled", "error")
+
+
+def knife_area(cfg: Config, snap: dict) -> tuple[tuple[float, float, float, float], Optional[str]]:
+    """Where the knife can cut: on the bed, with the nozzle inside its axis limits.
+
+    The macros apply SET_GCODE_OFFSET X=offset_x Y=offset_y, so the nozzle is at
+    commanded + offset while the knife tip is at the commanded point. Needs the
+    live printer; without it the configured bed is used and a warning returned.
+    """
+    bed = (0.0, 0.0, cfg.cut.bed_x, cfg.cut.bed_y)
+    lo, hi, off = snap.get("axis_minimum"), snap.get("axis_maximum"), snap.get("knife_offset")
+    if not (snap.get("online") and lo and hi and off):
+        return bed, (
+            "printer limits or knife offset unknown (printer offline or macros missing):"
+            " the cut area was not checked against the knife offset"
+        )
+    ox, oy = float(off[0]), float(off[1])
+    area = (
+        max(bed[0], lo[0] - ox),
+        max(bed[1], lo[1] - oy),
+        min(bed[2], hi[0] - ox),
+        min(bed[3], hi[1] - oy),
+    )
+    return area, None
 
 
 def fluidd_url(host: str) -> str:
@@ -176,17 +200,40 @@ def create_app(
 
     # -- jobs ----------------------------------------------------------------
 
-    def prepare_gcode(kind: str, source: Path, output: Path) -> None:
-        if kind == "cut-gcode":
-            lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
-            opts = Options(
-                max_feed=cfg.cut.max_feed,
-                default_feed=cfg.cut.default_feed,
-                z_threshold=cfg.cut.z_threshold,
-            )
-            output.write_text("\n".join(process_lines(lines, opts)) + "\n", encoding="utf-8")
-        else:
+    def prepare_gcode(kind: str, source: Path, output: Path) -> Optional[dict]:
+        """Write the G-code to send. For cut G-code, also check the knife can
+        reach every move; returns a summary, or raises ValueError."""
+        if kind != "cut-gcode":
             shutil.copyfile(source, output)
+            return None
+        lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+        opts = Options(
+            max_feed=cfg.cut.max_feed,
+            default_feed=cfg.cut.default_feed,
+            z_threshold=cfg.cut.z_threshold,
+        )
+        processed = process_lines(lines, opts)
+        area, warning = knife_area(cfg, monitor.poll_once())
+        warnings = [warning] if warning else []
+        try:
+            ext = xy_extents(processed)
+        except ValueError as exc:
+            ext = None
+            warnings.append(str(exc))
+        if ext is not None:
+            x0, y0, x1, y1 = ext
+            ax0, ay0, ax1, ay1 = area
+            if x0 < ax0 - 0.01 or y0 < ay0 - 0.01 or x1 > ax1 + 0.01 or y1 > ay1 + 0.01:
+                raise ValueError(
+                    f"moves span X {x0:.1f}..{x1:.1f}, Y {y0:.1f}..{y1:.1f}; the knife can reach"
+                    f" X {ax0:.1f}..{ax1:.1f}, Y {ay0:.1f}..{ay1:.1f} (move the design in your"
+                    " CAM program)"
+                )
+        output.write_text("\n".join(processed) + "\n", encoding="utf-8")
+        summary = {"warnings": warnings}
+        if ext is not None:
+            summary.update(width_mm=round(ext[2] - ext[0], 1), height_mm=round(ext[3] - ext[1], 1))
+        return summary
 
     def convert_design(job_id: int, source: Path, output: Path, opts: CutOptions) -> None:
         """Runs on the converter thread: a PDF or a traced photo takes seconds on a Pi 3."""
@@ -194,7 +241,7 @@ def create_app(
             result = cut_pipeline.run(source, output.parent / "work", opts)
             output.write_text("\n".join(result.gcode) + "\n", encoding="utf-8")
             (output.parent / "preview.svg").write_text(result.preview_svg, encoding="utf-8")
-            summary = dict(result.summary, warnings=result.warnings)
+            summary = dict(result.summary, warnings=opts.extra_warnings + result.warnings)
             jobs.update(job_id, state="ready", summary=json.dumps(summary))
         except (ConversionError, LayoutError, ValueError) as exc:
             jobs.update(job_id, state="failed", error=str(exc))
@@ -280,15 +327,22 @@ def create_app(
         output = job_dir / remote
         jobs.update(job.id, source=str(source), output=str(output), remote_name=remote)
         if cut_opts is not None:
+            cut_opts.area, area_warning = knife_area(cfg, monitor.poll_once())
+            if area_warning:
+                cut_opts.extra_warnings.append(area_warning)
             jobs.update(job.id, state="converting")
             converter.submit(convert_design, job.id, source, output, cut_opts)
             return jobs.get(job.id).to_dict()
         try:
-            prepare_gcode(kind, source, output)
+            summary = prepare_gcode(kind, source, output)
+        except ValueError as exc:
+            return jobs.update(job.id, state="failed", error=str(exc)).to_dict()
         # Any failure must leave a failed job, never a ready one with no output.
         except Exception as exc:  # noqa: BLE001
             log.exception("preparing job %s failed", job.id)
             return jobs.update(job.id, state="failed", error=f"preparation failed: {exc}").to_dict()
+        if summary is not None:
+            return jobs.update(job.id, summary=json.dumps(summary)).to_dict()
         return jobs.get(job.id).to_dict()
 
     @app.get("/api/jobs/{job_id}/preview.svg", dependencies=auth)

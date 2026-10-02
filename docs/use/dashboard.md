@@ -31,7 +31,7 @@ the [triaina macros](../setup/klipper.md).
     | Type | Accepts | What happens |
     |---|---|---|
     | Cut design | SVG, DXF, PDF, AI, EPS, PNG, JPG | Converted on the Pi with blade-offset compensation and a preview; see [Cutting a design file](designs.md) |
-    | Cut G-code | G-code from Kiri:Moto, Inkcut, Inkscape, LightBurn | Run through the [preprocessor](../reference/gcode-preprocessor.md): heaters and extruder removed, knife macros added, feed capped |
+    | Cut G-code | G-code from Kiri:Moto, Inkcut, Inkscape, LightBurn | Run through the [preprocessor](../reference/gcode-preprocessor.md): heaters and extruder removed, knife macros added, feed capped. Refused if a move is beyond the knife's reach (see [knife reach](designs.md#what-happens)) |
     | Print G-code | Sliced G-code | Sent unchanged |
 
     The job is now **ready** (a design is **converting** first). Nothing has

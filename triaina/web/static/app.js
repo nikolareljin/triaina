@@ -82,7 +82,12 @@ function renderJobs(jobs) {
     const det = document.createElement("td");
     if (j.summary) {
       const s = j.summary;
-      det.append(`${s.width_mm} x ${s.height_mm} mm, ${s.paths} paths, ~${fmtTime(s.estimate_s)}`);
+      // Design jobs have all fields; cut G-code jobs only size and warnings.
+      const parts = [];
+      if (s.width_mm != null) parts.push(`${s.width_mm} x ${s.height_mm} mm`);
+      if (s.paths != null) parts.push(`${s.paths} paths`);
+      if (s.estimate_s != null) parts.push(`~${fmtTime(s.estimate_s)}`);
+      det.append(parts.join(", "));
       for (const w of s.warnings || []) {
         const p = document.createElement("div");
         p.className = "warn";
@@ -197,7 +202,8 @@ $("upload").onsubmit = async (e) => {
     // Blank fields mean "use the configured default": send nothing for them.
     for (const [k, v] of [...form.entries()]) if (v === "") form.delete(k);
     const job = await api("POST", "api/jobs", form);
-    toast(job.state === "failed" ? `Failed: ${job.error}` : `Job #${job.id} ready`);
+    const what = { failed: `Failed: ${job.error}`, converting: `Job #${job.id} converting...` };
+    toast(what[job.state] || `Job #${job.id} ready`);
     const kind = $("kind").value;
     e.target.reset();
     $("kind").value = kind;
