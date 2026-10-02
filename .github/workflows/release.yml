@@ -1,0 +1,75 @@
+name: Release
+
+# Merging a release/X.Y.Z pull request into main creates tag X.Y.Z (ci-helpers
+# auto-tag preset), then this workflow builds dist/triaina-X.Y.Z.tar.gz with
+# `make dist` and attaches it to a GitHub release.
+#
+# The archive job runs in the same workflow, not on a tag-push trigger: a tag
+# pushed with GITHUB_TOKEN does not start other workflows, so a separate
+# `on: push: tags` workflow would never fire.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Existing tag to (re)build the archive for, e.g. 0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  tag:
+    if: github.event_name == 'push'
+    uses: nikolareljin/ci-helpers/.github/workflows/auto-tag.yml@production
+    with:
+      update_production_tag: false
+
+  archive:
+    needs: tag
+    # always() so a workflow_dispatch run (where `tag` is skipped) still runs.
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' || needs.tag.outputs.version != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ inputs.version || needs.tag.outputs.version }}
+      PRERELEASE: ${{ needs.tag.outputs.is_prerelease == 'true' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.VERSION }}
+          submodules: recursive
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Test
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pytest
+      - name: Build archive
+        run: make dist TAG="$VERSION"
+      - name: Release notes from CHANGELOG
+        run: |
+          # script-helpers' extractor is the same one check-changelog.sh validates against.
+          bash -c 'source scripts/script-helpers/helpers.sh && shlib_import changelog &&
+            changelog_extract CHANGELOG.md "$VERSION"' > notes.md
+          [ -s notes.md ] || { echo "No CHANGELOG section for $VERSION" >&2; exit 1; }
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release upload "$VERSION" "dist/triaina-$VERSION.tar.gz" --clobber
+          else
+            gh release create "$VERSION" "dist/triaina-$VERSION.tar.gz" \
+              --title "triaina $VERSION" --notes-file notes.md "${flags[@]}"
+          fi

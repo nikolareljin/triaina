@@ -1,0 +1,37 @@
+name: CI
+
+# Lint, unit tests and the public-boundary checks on main. Pull requests are
+# covered by pr-gate.yml; running both on a pull request would double every job.
+# The presets set their own concurrency groups, so this file sets none.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    uses: nikolareljin/ci-helpers/.github/workflows/python.yml@production
+    with:
+      python_version: "3.11"
+      fetch_depth: 1
+      install_command: "python -m pip install -r requirements.txt"
+      lint_command: "python -m black --check scripts tests && python -m flake8 scripts tests"
+      test_command: "python -m pytest"
+      timeout_minutes: 10
+
+  # Shell and repository checks. The shared checkout does not fetch submodules,
+  # so anything needing script-helpers initializes it first.
+  checks:
+    uses: nikolareljin/ci-helpers/.github/workflows/ci.yml@production
+    with:
+      concurrency_key: shell-checks
+      lint_command: >-
+        git submodule update --init --recursive &&
+        bash scripts/check-private-names.sh &&
+        bash scripts/check-changelog.sh &&
+        shellcheck -S warning scripts/setup_pi.sh scripts/preflight.sh scripts/project.sh scripts/check-private-names.sh scripts/check-changelog.sh
+      timeout_minutes: 10

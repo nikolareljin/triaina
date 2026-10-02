@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+site/
+# Generated cutter jobs; keep source vectors, not output.
+*.cut.gcode
+docs/superpowers/
+.private-names

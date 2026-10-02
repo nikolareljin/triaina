@@ -1,0 +1,35 @@
+name: PR Gate
+
+# What every pull request must pass. check_release_tag fails a release/X.Y.Z
+# pull request early if its tag already exists.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  gate:
+    uses: nikolareljin/ci-helpers/.github/workflows/pr-gate.yml@production
+    with:
+      check_release_tag: true
+      concurrency_key: shell-checks
+      lint_command: >-
+        git submodule update --init --recursive &&
+        bash scripts/check-private-names.sh &&
+        bash scripts/check-changelog.sh &&
+        shellcheck -S warning scripts/setup_pi.sh scripts/preflight.sh scripts/project.sh scripts/check-private-names.sh scripts/check-changelog.sh
+      timeout_minutes: 10
+
+  python:
+    uses: nikolareljin/ci-helpers/.github/workflows/python.yml@production
+    with:
+      python_version: "3.11"
+      fetch_depth: 1
+      install_command: "python -m pip install -r requirements.txt"
+      lint_command: "python -m black --check scripts tests && python -m flake8 scripts tests"
+      test_command: "python -m pytest"
+      timeout_minutes: 10
