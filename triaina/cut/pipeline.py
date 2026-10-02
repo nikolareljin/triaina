@@ -13,7 +13,16 @@ from typing import Optional
 
 from triaina.convert import RasterOptions, load
 from triaina.cut.knife import compensate
-from triaina.cut.paths import Polyline, bounds, dist, length, order, place, weed_border
+from triaina.cut.paths import (
+    LayoutError,
+    Polyline,
+    bounds,
+    dist,
+    length,
+    order,
+    place,
+    weed_border,
+)
 from triaina.preprocess import Options as PreOptions
 from triaina.preprocess import process_lines
 
@@ -102,6 +111,8 @@ def preview(design: list[Polyline], axis: list[Polyline], opts: CutOptions) -> s
 
 def run(source: Path, work_dir: Path, opts: CutOptions) -> CutResult:
     design = load(source, work_dir, RasterOptions(opts.threshold, opts.invert))
+    if design.needs_width and opts.width is None and not opts.fit:
+        raise LayoutError("an image has no real size: set a width in mm, or shrink to fit")
     # The weeding border must stay inside the margin too, so reserve it there.
     weed = max(opts.weed, 0.0)
     paths = place(design.paths, (opts.bed_x, opts.bed_y), opts.margin + weed, opts.width, opts.fit)

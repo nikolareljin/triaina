@@ -144,6 +144,13 @@ def _rotate_to_nearest(path: Polyline, pos: Point) -> Polyline:
     return ring + [ring[0]]
 
 
+def _box_dist(b: "Bounds", p: Point) -> float:
+    """Distance from p to a bounding box (0 inside). O(1), used to rank candidates."""
+    dx = max(b.min_x - p[0], 0.0, p[0] - b.max_x)
+    dy = max(b.min_y - p[1], 0.0, p[1] - b.max_y)
+    return math.hypot(dx, dy)
+
+
 def order(paths: list[Polyline], start: Point = (0.0, 0.0)) -> list[Polyline]:
     """Cut order: inner shapes before the shapes around them, otherwise
     nearest next.
@@ -151,29 +158,36 @@ def order(paths: list[Polyline], start: Point = (0.0, 0.0)) -> list[Polyline]:
     Cutting the outline of a letter before its counter (the hole in an O) lets
     the piece shift on the mat, so containment wins over travel distance.
     Open paths may be reversed and closed paths re-started to shorten travel.
+
+    Roughly O(n^2) in the number of paths with O(1) work per pair, so a traced
+    image with thousands of shapes still orders in seconds on a Pi 3.
     """
+    n = len(paths)
     boxes = [bounds([p]) for p in paths]
-    inside = [
-        {j for j in range(len(paths)) if j != i and boxes[i].contains(boxes[j])}
-        for i in range(len(paths))
-    ]
-    done: set[int] = set()
+    # waiting[i]: how many shapes inside i are not cut yet; outer[j]: shapes around j.
+    waiting = [0] * n
+    outer: list[list[int]] = [[] for _ in range(n)]
+    by_area = sorted(range(n), key=lambda k: boxes[k].width * boxes[k].height)
+    for a, j in enumerate(by_area):
+        for i in by_area[a + 1 :]:
+            if boxes[i].contains(boxes[j]):
+                waiting[i] += 1
+                outer[j].append(i)
+    ready = {i for i in range(n) if waiting[i] == 0}
     out: list[Polyline] = []
     pos = start
-    while len(done) < len(paths):
-        ready = [i for i in range(len(paths)) if i not in done and inside[i] <= done]
-        best, best_path, best_d = None, None, math.inf
-        for i in ready:
-            path = paths[i]
-            if is_closed(path):
-                cand = [_rotate_to_nearest(path, pos)]
-            else:
-                cand = [path, list(reversed(path))]
-            for c in cand:
-                d = dist(pos, c[0])
-                if d < best_d:
-                    best, best_path, best_d = i, c, d
-        done.add(best)
-        out.append(best_path)
-        pos = best_path[-1]
+    while ready:
+        best = min(ready, key=lambda k: _box_dist(boxes[k], pos))
+        ready.discard(best)
+        path = paths[best]
+        if is_closed(path):
+            path = _rotate_to_nearest(path, pos)
+        elif dist(pos, path[-1]) < dist(pos, path[0]):
+            path = list(reversed(path))
+        out.append(path)
+        pos = path[-1]
+        for i in outer[best]:
+            waiting[i] -= 1
+            if waiting[i] == 0:
+                ready.add(i)
     return out

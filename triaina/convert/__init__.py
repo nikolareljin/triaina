@@ -49,6 +49,8 @@ class ConversionError(ValueError):
 class Design:
     paths: list[Polyline]
     warnings: list[str] = field(default_factory=list)
+    #: True for traced images: their size is pixels, so the job must set a width.
+    needs_width: bool = False
 
 
 @dataclass

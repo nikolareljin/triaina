@@ -46,7 +46,7 @@ def _flatten(path, chord_px: float) -> list[Polyline]:
 
 def load_svg(path: Path) -> Design:
     try:
-        from svgelements import SVG, Path as SvgPath, Shape, Text
+        from svgelements import SVG, Image, Path as SvgPath, Shape, Text
     except ImportError as exc:  # pragma: no cover - dependency of the package
         raise ConversionError("svgelements is not installed") from exc
 
@@ -57,10 +57,13 @@ def load_svg(path: Path) -> Design:
 
     chord_px = CHORD_MM / PX_TO_MM
     paths: list[Polyline] = []
-    texts = 0
+    texts = images = 0
     for element in svg.elements():
         if isinstance(element, Text):
             texts += 1
+            continue
+        if isinstance(element, Image):
+            images += 1
             continue
         if not isinstance(element, Shape):
             continue
@@ -75,6 +78,11 @@ def load_svg(path: Path) -> Design:
         warnings.append(
             f"{texts} text element(s) skipped: convert text to paths"
             " (Inkscape: Path > Object to Path)"
+        )
+    if images:
+        warnings.append(
+            f"{images} embedded image(s) skipped: trace them to paths first, or upload the"
+            " image itself as PNG/JPG"
         )
     if not paths:
         raise ConversionError(

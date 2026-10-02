@@ -171,7 +171,9 @@ function kindChanged() {
   $("kindHelp").textContent = HELP[k] || "";
   input.accept = ACCEPT[k] || "";
   const name = input.files[0]?.name || "";
-  $("rasterOpts").hidden = !/\.(png|jpe?g)$/i.test(name);
+  const isImage = /\.(png|jpe?g)$/i.test(name);
+  $("rasterOpts").hidden = !isImage;
+  document.querySelector('[name="width"]').placeholder = isImage ? "required" : "file size";
 }
 input.onchange = () => {
   $("dropText").textContent = input.files[0]?.name || "Drop a file or click to choose";

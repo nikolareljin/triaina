@@ -55,4 +55,6 @@ def load_raster(path: Path, work_dir: Path, opts: RasterOptions) -> Design:
         ["potrace", "--svg", "--turdsize", "4", "--alphamax", "1.0", "-o", str(svg), str(pbm)],
         "PNG/JPG",
     )
-    return load_svg(svg)
+    design = load_svg(svg)
+    design.needs_width = True
+    return design

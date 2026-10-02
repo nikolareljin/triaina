@@ -141,3 +141,24 @@ def test_order_cuts_inner_before_outer():
 def test_order_reverses_open_path_to_shorten_travel():
     out = order([[(10, 0), (0, 0)]], start=(0, 0))
     assert out[0][0] == (0, 0)
+
+
+def _square(x, y, s):
+    return [(x, y), (x + s, y), (x + s, y + s), (x, y + s), (x, y)]
+
+
+def test_order_three_levels_of_nesting():
+    big, mid, small = _square(0, 0, 90), _square(10, 10, 50), _square(20, 20, 10)
+    out = order([big, mid, small])
+    widths = [round(bounds([p]).width) for p in out]
+    assert widths == [10, 50, 90]
+
+
+def test_order_is_fast_for_many_shapes():
+    import time
+
+    shapes = [_square((i % 30) * 6, (i // 30) * 6, 3) for i in range(900)]
+    t = time.time()
+    assert len(order(shapes)) == 900
+    # Cubic ordering took about 9 s for this on a desktop; a Pi 3 is ~10x slower.
+    assert time.time() - t < 3

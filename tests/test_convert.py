@@ -198,3 +198,24 @@ def test_missing_tool_names_apt_package(tmp_path, monkeypatch):
     monkeypatch.setattr("triaina.convert.shutil.which", lambda _t: None)
     with pytest.raises(ConversionError, match="sudo apt install poppler-utils"):
         load(write(tmp_path, "a.pdf", make_pdf(SQUARE_72PT)), tmp_path / "w")
+
+
+def test_svg_embedded_image_warns(tmp_path):
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
+        ' width="10mm" height="10mm" viewBox="0 0 10 10"><rect width="5" height="5"/>'
+        '<image width="5" height="5" xlink:href="data:image/png;base64,iVBORw0KGgo="/></svg>'
+    )
+    d = load(write(tmp_path, "i.svg", svg), tmp_path / "w")
+    assert any("embedded image" in w for w in d.warnings)
+
+
+@needs["potrace"]
+def test_raster_needs_width(tmp_path):
+    from triaina.cut.paths import LayoutError
+    from triaina.cut.pipeline import CutOptions, run
+
+    p = make_png(tmp_path)
+    with pytest.raises(LayoutError, match="set a width"):
+        run(p, tmp_path / "w", CutOptions())
+    assert run(p, tmp_path / "w2", CutOptions(width=80)).summary["width_mm"] == 80.0

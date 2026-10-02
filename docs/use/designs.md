@@ -13,7 +13,7 @@ the file.
 | PDF | `pdftocairo` (poppler-utils) | First page only. Text is converted to outlines automatically |
 | AI | `pdftocairo` | Only PDF-compatible files ("Create PDF Compatible File" in Illustrator) |
 | EPS | ghostscript, then as PDF | |
-| PNG, JPG | Pillow + `potrace` | Black-on-white logos trace well; photos do not. Set the width, since pixels have no real size |
+| PNG, JPG | Pillow + `potrace` | Black-on-white logos trace well; photos do not. **Width is required** (or shrink to fit): pixels have no real size |
 
 `setup_pi.sh --service` installs the three programs. A missing one makes only
 its format fail, with the `apt install` line in the error.
@@ -22,7 +22,7 @@ its format fail, with the `apt install` line in the error.
 
 | Option | Default | Meaning |
 |---|---|---|
-| Width | the file's own size | Final width in mm; height follows the aspect ratio |
+| Width | the file's own size | Final width in mm; height follows the aspect ratio. Required for PNG/JPG |
 | Shrink to fit | off | Scale down to the bed if the design is larger. A design is never shrunk silently: without this, too big is an error |
 | Weeding border | 0 (none) | Rectangle this many mm around the design, for peeling the waste |
 | Blade offset | `[cut] blade_offset` (0.25) | Tip offset of your blade; 0 disables compensation |
@@ -39,6 +39,8 @@ file -> polylines (mm) -> size and place on the bed (lower-left at the margin)
      -> optional weeding border -> cut order -> blade-offset compensation
      -> G-code with CUT_PLUNGE / CUT_RETRACT -> preprocessor (CUTTER_MODE ... PRINTER_MODE)
 ```
+
+Embedded bitmaps inside an SVG are skipped with a warning.
 
 **Cut order.** Inner shapes are cut before the shapes around them (the hole of
 an O before its outline), so pieces cannot shift on the mat. Otherwise the
