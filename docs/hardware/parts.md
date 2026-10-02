@@ -23,6 +23,18 @@ order.
 | Cutting mat | 12 x 12 in, medium tack (Cricut StandardGrip or similar) | Holds vinyl flat; protects the PEI sheet | [Cricut](https://www.cricut.com/en-us/search?q=standardgrip) | $15 for 3 |
 | Adhesive vinyl | Oracal 651 or equivalent | The material | [ORAFOL product page](https://www.orafol.com/en/americas/products/oracal-651-intermediate-cal); buy from a sign-supply shop | $10-20 per roll |
 
+## Network
+
+| Part | Spec | Why | Where | Approx |
+|---|---|---|---|---|
+| Network switch (recommended) | 5-port unmanaged, 10/100 is enough: TP-Link TL-SF1005D | One cable back to the router for both the printer (wired-only) and the Pi | [TP-Link TL-SF1005D listings](https://www.pricerunner.com/pl/167-972784/Switches/TP-Link-TL-SF1005D-Compare-Prices), [PB Tech](https://www.pbtech.com/product/SWHTPL1005/product/SWHTPL1005/TP-Link-TL-SF1005D-5-Port-10100M-Unmanaged-Switch) | $7-15 |
+| Patch cables | Cat5e or Cat6, 3 x 1-2 m | Router to switch, switch to Pi, switch to printer | any | $5 |
+
+Gigabit (TP-Link TL-SG105, about twice the price) buys nothing here: the Pi 3's
+Ethernet is 100 Mbit and the traffic is tiny. Choose it only if other devices
+will share the switch. Skip the switch entirely if the router has two free
+ports within cable reach of the printer.
+
 ## Optional: console cable
 
 | Part | Spec | Why | Where | Approx |

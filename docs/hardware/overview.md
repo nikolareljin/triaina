@@ -20,7 +20,7 @@ from adding the triaina macros to `printer.cfg`.
 
 | Link | Required | Purpose |
 |---|---|---|
-| Wi-Fi or Ethernet, Pi and printer on the same LAN | yes | Upload jobs, switch modes, read status |
+| Ethernet (printer is wired-only; Pi wired or Wi-Fi), same LAN, through a small switch | yes | Upload jobs, switch modes, read status |
 | USB-C cable, Pi to printer | no | Recovery console when the printer's network is down |
 
 ## Topologies
@@ -28,7 +28,7 @@ from adding the triaina macros to `printer.cfg`.
 | | Topology A (supported) | Topology B (experimental) |
 |---|---|---|
 | Klipper host | Printer's built-in Linux host | Raspberry Pi |
-| Link Pi to printer | Wi-Fi or Ethernet, HTTP to Moonraker | Pi GPIO UART (3.3 V, TX/RX/GND) wired to the MCU's UART pins inside the base; **not** the USB-C port |
+| Link Pi to printer | Ethernet via a switch (Pi may use Wi-Fi), HTTP to Moonraker | Pi GPIO UART (3.3 V, TX/RX/GND) wired to the MCU's UART pins inside the base; **not** the USB-C port |
 | Printer changes | None | Open the base, wire to MCU pins, build and flash Klipper MCU firmware for that UART, stop the built-in Klipper |
 | USB 5 V | Optional console cable: **block pin 1 (VBUS) with Kapton tape** or a 5 V blocker | No 5 V between boards; share GND only |
 | Verified | Yes | No: MCU UART pins on the ZNP-K1 not confirmed on any board revision |

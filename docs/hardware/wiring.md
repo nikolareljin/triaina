@@ -20,26 +20,41 @@ network; the USB cable described at the end is optional.
 |---|---|---|---|---|
 | 1 | Wall outlet | Pi PSU | Mains plug | Official 5.1 V 2.5 A unit |
 | 2 | Pi PSU | Pi micro-USB power port (bottom edge, next to HDMI) | Captive micro-USB | Do not power the Pi from the printer's USB |
-| 3 | Pi Ethernet jack | Router | Cat5e or better | Or use the Pi's Wi-Fi (configured in Raspberry Pi Imager) |
-| 4 | Printer | Router | Wi-Fi (printer screen: Settings > Network) or Ethernet | Note the printer's address or `.local` name |
-| 5 | Pi CSI connector | Camera Module | 15-pin ribbon, contacts toward the HDMI port | Optional |
-| 6 | Wall outlet | Printer PSU | Printer's mains cord | Check the 115/230 V switch if your unit has one |
+| 3 | Router LAN port | Switch | Cat5e or better | Skip the switch if the router has two free ports next to the printer |
+| 4 | Pi Ethernet jack | Switch | Cat5e or better | Or the Pi's Wi-Fi (configured in Raspberry Pi Imager) |
+| 5 | Printer RJ45 port | Switch | Cat5e or better | The printer has no built-in Wi-Fi; see below. Note its address or `.local` name |
+| 6 | Pi CSI connector | Camera Module | 15-pin ribbon, contacts toward the HDMI port | Optional |
+| 7 | Wall outlet | Printer PSU | Printer's mains cord | Check the 115/230 V switch if your unit has one |
+| 8 | Wall outlet | Switch power adapter | Supplied 5 V or 9 V adapter | |
+
+**Why a switch.** The printer is wired-only (an RJ45 port, no built-in Wi-Fi,
+per [Obico's Neptune 4 Pro guide](https://www.obico.io/blog/how-to-connect-your-elegoo-neptune-4-pro-to-wifi/);
+the Neptune 4 uses the same board), and the Pi is most reliable wired too. A
+small unmanaged switch next to the printer needs one cable back to the router
+instead of two. 10/100 is plenty: the Pi 3's Ethernet is 100 Mbit and the
+traffic is G-code uploads and a status poll once a second. See
+[Parts](parts.md#network).
+
+**Printer on Wi-Fi instead.** Possible with a USB Wi-Fi dongle whose driver the
+printer's Linux image includes (Obico reports the TP-Link TL-WN725N working),
+set up over a wired connection first. Wired is simpler and does not drop.
 
 ### Bring-up order
 
 1. Flash Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager; set host
    name `triaina`, user, Wi-Fi and SSH in the Imager settings.
-2. Power the Pi (connections 1-2). It appears as `triaina.local` after about a
-   minute.
-3. Power the printer and join it to the same network.
-4. From the Pi, check you can reach Moonraker:
+2. Connect the switch (3, 8), then the Pi (4) and the printer (5).
+3. Power the Pi (1-2). It appears as `triaina.local` after about a minute.
+4. Power the printer (7). Read its IP address on its screen or in your
+   router's client list.
+5. From the Pi, check you can reach Moonraker:
 
     ```bash
     curl -s http://neptune4.local:7125/server/info | head -c 300
     ```
 
     Replace `neptune4.local` with your printer's name or address.
-5. Continue with [Raspberry Pi setup](../setup/pi.md).
+6. Continue with [Raspberry Pi setup](../setup/pi.md).
 
 ## Optional: USB-C console cable
 

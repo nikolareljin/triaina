@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Docs: the printer is wired-only (RJ45, no built-in Wi-Fi); wiring now goes through a small unmanaged switch (TP-Link TL-SF1005D recommended) and the parts list has a Network section.
+
 - Cut designs from the dashboard: SVG, DXF, PDF, AI, EPS, PNG and JPG are converted on the Pi with blade-offset compensation, inner-first cut order, optional weeding border, size/fit options and an SVG preview. `setup_pi.sh --service` installs poppler-utils, ghostscript and potrace.
 
 - Dashboard service (`python -m triaina serve`): live printer state, mode switch, cut and print G-code jobs with a physical-setup confirmation, pause/resume/cancel, emergency stop, camera. systemd unit, `setup_pi.sh --service`, optional token.
