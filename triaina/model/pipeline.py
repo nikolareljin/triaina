@@ -13,7 +13,7 @@ from triaina.cut.paths import LayoutError, bounds, place
 from triaina.model import ModelError, write_stl
 from triaina.model.extrude import extrude
 from triaina.model.mount import MountOptions, build
-from triaina.model.slice import SliceOptions, slice_model
+from triaina.model.slice import SKIRT_CLEARANCE_MM, SliceOptions, slice_model
 
 MODEL_SUFFIXES = {".stl", ".3mf"}
 
@@ -46,7 +46,10 @@ def print_design(
     design = load(source, out_dir / "work", raster)
     if design.needs_width and width is None and not fit:
         raise LayoutError("an image has no real size: set a width in mm, or shrink to fit")
-    paths = place(design.paths, (0.0, 0.0, bed[0], bed[1]), 5.0, width, fit)
+    # Same usable area as the slicer's fit (bed minus margin and skirt), so a
+    # width the user set is either honoured or refused, never shrunk later.
+    edge = slicing.margin + SKIRT_CLEARANCE_MM
+    paths = place(design.paths, (0.0, 0.0, bed[0], bed[1]), edge, width, fit)
     solid, warnings = extrude(paths, height)
     stl = out_dir / "model.stl"
     write_stl(solid, stl)

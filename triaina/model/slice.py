@@ -53,6 +53,15 @@ class SliceOptions:
             raise ModelError("infill must be 0-100 %")
 
 
+def _clean(line: str, *paths: Path) -> str:
+    """PrusaSlicer log line -> message: no '[time] [thread] [level]' prefix,
+    no server paths (the user only knows their file's name)."""
+    line = re.sub(r"^(\s*\[[^\]]*\])+\s*", "", line).strip()
+    for p in paths:
+        line = line.replace(str(p), p.name)
+    return line
+
+
 def find_slicer(name: Optional[str]) -> str:
     for candidate in ([name] if name else SLICER_NAMES):
         if candidate and shutil.which(candidate):
@@ -97,7 +106,7 @@ def model_info(model: Path, slicer: str) -> dict:
     except (KeyError, ValueError) as exc:
         lines = [ln for ln in (proc.stderr + proc.stdout).splitlines() if ln.strip()]
         raise ModelError(
-            "cannot read the model: " + (lines[-1].strip() if lines else "no output")
+            "cannot read the model: " + (_clean(lines[-1], model) if lines else "no output")
         ) from exc
     return {"size": size, "manifold": info.get("manifold", "yes") == "yes"}
 
@@ -171,7 +180,7 @@ def slice_model(model: Path, output: Path, opts: SliceOptions) -> dict:
             (ln for ln in reversed(lines) if "error" in ln.lower()),
             lines[-1] if lines else "no output",
         )
-        raise ModelError(f"slicing failed: {reason.strip()}")
+        raise ModelError(f"slicing failed: {_clean(reason, model, output)}")
     stats = parse_stats(output)
     stats.update(
         model_mm=[round(d, 1) for d in info["size"]],

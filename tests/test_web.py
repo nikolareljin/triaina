@@ -590,3 +590,34 @@ def test_cut_start_does_not_switch_mode(env):
     job = upload(client, "cut-gcode", "G90\nG0 X10 Y10\nM3\nG1 X20 Y10 F600\nM5\n").json()
     assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 200
     assert ("gcode", "PRINTER_MODE") not in printer.calls
+
+
+def test_print_design_width_limited_to_print_area(env, fake_slicer):
+    client = env[2]
+    r = client.post(
+        "/api/jobs",
+        data={"kind": "print-design", "width": "210"},
+        files={"file": ("sign.svg", SVG_SQUARE)},
+    )
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "failed" and "203" in job["error"]
+
+
+def test_cut_conversion_not_blocked_by_slicing(env, monkeypatch):
+    import threading
+
+    gate = threading.Event()
+
+    def slow(model, output, opts):
+        gate.wait(10)
+        output.write_text("G1 X100 Y100\n")
+        return {}
+
+    monkeypatch.setattr("triaina.model.pipeline.slice_model", slow)
+    client = env[2]
+    client.post("/api/jobs", data={"kind": "knife-mount"})
+    r = client.post("/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)})
+    try:
+        assert wait_state(client, r.json()["id"], timeout=5)["state"] == "ready"
+    finally:
+        gate.set()

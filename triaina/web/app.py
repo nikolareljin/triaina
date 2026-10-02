@@ -112,6 +112,7 @@ def create_app(
             yield
         finally:
             converter.shutdown(wait=False, cancel_futures=True)
+            slicer_pool.shutdown(wait=False, cancel_futures=True)
             if start_monitor:
                 monitor.stop()
 
@@ -141,7 +142,10 @@ def create_app(
     start_lock = threading.Lock()
     # One conversion at a time: a Pi 3 has four cores and 1 GB.
     converter = ThreadPoolExecutor(max_workers=1, thread_name_prefix="triaina-convert")
-    app.state.converter = converter
+    # Slicing can take many minutes on a Pi 3; it gets its own worker so a cut
+    # conversion never waits behind it.
+    slicer_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="triaina-slice")
+    app.state.converter, app.state.slicer_pool = converter, slicer_pool
 
     # -- helpers -------------------------------------------------------------
 
@@ -436,7 +440,7 @@ def create_app(
         jobs.update(job.id, source=str(source), output=str(output), remote_name=remote)
         if print_params is not None:
             jobs.update(job.id, state="converting")
-            converter.submit(build_print, job.id, kind, source, output, print_params)
+            slicer_pool.submit(build_print, job.id, kind, source, output, print_params)
             return jobs.get(job.id).to_dict()
         if cut_opts is not None:
             cut_opts.area, area_warning = knife_area(cfg, monitor.poll_once())

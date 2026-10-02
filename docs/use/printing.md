@@ -14,7 +14,7 @@ print job on the Pi. They use the same flow as everything else: upload,
 
 | Option | Default | Applies to |
 |---|---|---|
-| Width, shrink to fit | file size | Print design (as for [cut designs](designs.md)); required for PNG/JPG |
+| Width, shrink to fit | file size | Print design (as for [cut designs](designs.md)), within the 203 x 203 mm print area; required for PNG/JPG |
 | Thickness | 3 mm | Print design |
 | Layer height | 0.2 mm | All (0.05-0.32 for the 0.4 mm nozzle) |
 | Infill | 20 % | All |
@@ -48,13 +48,16 @@ and an orange warning when it was scaled.
 
 Slicing runs the `prusa-slicer` command line on the Pi with
 [`triaina/data/prusaslicer_neptune4.ini`](https://github.com/nikolareljin/triaina/blob/main/triaina/data/prusaslicer_neptune4.ini):
-225 x 225 x 265 mm, 0.4 mm nozzle, Klipper flavour, PLA 215/60 C first layer,
+225 x 225 x 265 mm, 0.4 mm nozzle, Marlin 2 G-code flavour (Klipper runs it; the
+klipper flavour needs a newer PrusaSlicer than Raspberry Pi OS may ship), PLA
+215/60 C first layer,
 gyroid infill, a purge line at the left edge. PrusaSlicer's own Elegoo profiles
 stop at the Neptune 3, so this profile is written from the Neptune 4 specs;
 check it against your printer and edit the file to taste.
 
 A Pi 3 slices a small part in a minute or two; a large model can take much
-longer (the limit is 30 minutes).
+longer (the limit is 30 minutes). Slicing runs on its own worker, so cut jobs
+are not held up by it.
 
 ## Printer mode
 

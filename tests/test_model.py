@@ -170,3 +170,43 @@ def test_real_slice_scales_oversized_model(tmp_path):
     lines = (tmp_path / "big.gcode").read_text().splitlines()
     x0, _, x1, _ = xy_extents([ln for ln in lines if not ln.startswith("G91")])
     assert x0 >= 0 and x1 <= 225  # every move, skirt included, on the bed
+
+
+def test_clean_slicer_message(tmp_path):
+    from triaina.model.slice import _clean
+
+    model = tmp_path / "part.stl"
+    line = f"[2026-10-01 23:35:06.150404] [0x00007c8be1552180] [error]   empty file: {model}"
+    assert _clean(line, model) == "empty file: part.stl"
+
+
+@needs_slicer
+def test_real_broken_stl_message(tmp_path):
+    bad = tmp_path / "bad.stl"
+    bad.write_bytes(b"\x00" * 300)
+    with pytest.raises(ModelError) as exc:
+        slice_model(bad, tmp_path / "bad.gcode", SliceOptions())
+    msg = str(exc.value)
+    assert (
+        msg.startswith("cannot read the model:") and str(tmp_path) not in msg and "[0x" not in msg
+    )
+
+
+@needs_slicer
+def test_real_3mf_input(tmp_path):
+    import subprocess
+
+    from triaina.model.slice import find_slicer
+
+    stl = tmp_path / "m.stl"
+    write_stl(build(MountOptions()), stl)
+    mf = tmp_path / "m.3mf"
+    subprocess.run(
+        [find_slicer(None), "--export-3mf", "-o", str(mf), str(stl)],
+        check=True,
+        capture_output=True,
+    )
+    stats = slice_model(mf, tmp_path / "m.gcode", SliceOptions(layer_height=0.3))
+    assert stats["final_mm"] == [40.0, 26.9, 20.0]
+    text = (tmp_path / "m.gcode").read_text()
+    assert "G92 E0" in text and "M73 P" in text
