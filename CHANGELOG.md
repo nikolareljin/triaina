@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Docs: commissioning checklist for the hardware stage (service, macros, cutting, printing, slicing on the Pi 3, console cable), with what to record at each step.
 - Docs: the printer is wired-only (RJ45, no built-in Wi-Fi); wiring now goes through a small unmanaged switch (TP-Link TL-SF1005D recommended) and the parts list has a Network section.
 - Default printer host is `mkspi.local` (the Neptune 4's MKS-PI board name), not `neptune4.local`; docs lead with the printer's IP address.
 - Print jobs built on the Pi: a 2D design extruded into a plate, STL/3MF models, and a parametric drag-knife clamp (clamp ears with an M3 screw, slotted mounting holes, layouts that cannot work refused); sliced with PrusaSlicer and a shipped Neptune 4 profile. Models are measured and shrunk to fit the printer (bed, skirt and height), with a scale option for unit-less STL. Starting a print in cutter mode runs PRINTER_MODE first.

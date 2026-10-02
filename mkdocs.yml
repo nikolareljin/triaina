@@ -88,6 +88,7 @@ nav:
       - Switching modes: use/mode-switching.md
       - Inkcut: use/inkcut.md
       - Safety: use/safety.md
+      - Commissioning checklist: use/commissioning.md
       - Troubleshooting: use/troubleshooting.md
   - Reference:
       - Klipper macros: reference/klipper-macros.md
