@@ -2,12 +2,14 @@
 # Every key is optional; these are the defaults unless noted.
 
 [printer]
-# The Neptune 4's address on your network (Moonraker port 7125).
-host = "neptune4.local"
+# The Neptune 4's address on your network (Moonraker port 7125). Its board
+# is an MKS-PI named "mkspi"; if mkspi.local does not resolve on your network,
+# use the IP address shown on the printer's screen, e.g. host = "192.0.2.50".
+host = "mkspi.local"
 port = 7125
 # api_key = ""            # only if Moonraker authorization is enabled
 timeout = 10.0
-# web_url = "http://neptune4.local/"   # Fluidd link; derived from host if empty
+# web_url = "http://mkspi.local/"   # Fluidd link; derived from host if empty
 
 [server]
 bind = "0.0.0.0"          # all interfaces on the Pi; reach it at http://triaina.local:8080
@@ -23,4 +25,4 @@ default_feed = 1500.0
 z_threshold = 0.0
 
 [camera]
-# stream_url = "http://neptune4.local/webcam/?action=stream"
+# stream_url = "http://mkspi.local/webcam/?action=stream"

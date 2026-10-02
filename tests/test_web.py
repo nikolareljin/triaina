@@ -43,7 +43,7 @@ def test_info_lists_kinds(env):
         "print-model",
         "knife-mount",
     }
-    assert info["printer_url"] == "http://neptune4.local:7125"
+    assert info["printer_url"] == "http://mkspi.local:7125"
 
 
 def test_cut_job_is_preprocessed(env):
@@ -210,7 +210,7 @@ def test_lifespan_starts_and_stops_monitor(tmp_path):
 def test_fluidd_url_drops_moonraker_port():
     from triaina.web.app import fluidd_url
 
-    assert fluidd_url("neptune4.local") == "http://neptune4.local/"
+    assert fluidd_url("mkspi.local") == "http://mkspi.local/"
     assert fluidd_url("http://198.51.100.7:7125") == "http://198.51.100.7/"
 
 

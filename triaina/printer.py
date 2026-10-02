@@ -7,7 +7,7 @@ standard library so it runs on a fresh Raspberry Pi OS without a venv.
 Usage::
 
     python scripts/mode_switch.py status
-    python scripts/mode_switch.py cutter --host neptune4.local
+    python scripts/mode_switch.py cutter --host mkspi.local
     python scripts/mode_switch.py printer --backend octoprint --host octopi.local
     python scripts/mode_switch.py upload sticker.cut.gcode --start
 

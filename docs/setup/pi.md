@@ -43,7 +43,7 @@ Preview what it would do with `--dry-run`. Every option is in
 ## 4. Point the scripts at the printer
 
 ```bash
-echo 'export TRIAINA_HOST=neptune4.local' >> ~/.bashrc
+echo 'export TRIAINA_HOST=mkspi.local' >> ~/.bashrc
 source ~/.bashrc
 .venv/bin/python scripts/mode_switch.py status
 ```

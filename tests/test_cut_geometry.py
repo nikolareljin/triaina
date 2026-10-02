@@ -160,8 +160,9 @@ def test_order_is_fast_for_many_shapes():
     shapes = [_square((i % 30) * 6, (i // 30) * 6, 3) for i in range(900)]
     t = time.time()
     assert len(order(shapes)) == 900
-    # Cubic ordering took about 9 s for this on a desktop; a Pi 3 is ~10x slower.
-    assert time.time() - t < 3
+    # The old cubic ordering took ~19 s for this; the grid version ~0.2 s idle,
+    # ~2 s on a loaded machine. 10 s catches the regression without flaking.
+    assert time.time() - t < 10
 
 
 def test_fit_never_enlarges():

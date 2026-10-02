@@ -17,7 +17,7 @@ On the Pi, in the triaina clone ([Raspberry Pi setup](pi.md) first):
 
 ```bash
 scripts/setup_pi.sh --service
-sudo nano /etc/triaina/config.toml      # set [printer] host
+sudo nano /etc/triaina/config.toml      # set [printer] host: the printer's IP, or mkspi.local
 sudo systemctl restart triaina
 ```
 
@@ -38,7 +38,7 @@ existing config file.
 
 | Section | Key | Default | Meaning |
 |---|---|---|---|
-| `[printer]` | `host` | `neptune4.local` | Printer address or full URL |
+| `[printer]` | `host` | `mkspi.local` | Printer address or full URL |
 | | `port` | `7125` | Moonraker port |
 | | `api_key` | none | Only if Moonraker authorization is on |
 | | `web_url` | `http://<host>/` | Fluidd link in the dashboard |

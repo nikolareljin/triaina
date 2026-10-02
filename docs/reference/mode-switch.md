@@ -45,9 +45,9 @@ included in `printer.cfg`.
 ## Examples
 
 ```bash
-python3 scripts/mode_switch.py status --host neptune4.local
-python3 scripts/mode_switch.py cutter --host neptune4.local
-python3 scripts/mode_switch.py upload sticker.cut.gcode --start --host neptune4.local
+python3 scripts/mode_switch.py status --host mkspi.local
+python3 scripts/mode_switch.py cutter --host mkspi.local
+python3 scripts/mode_switch.py upload sticker.cut.gcode --start --host mkspi.local
 OCTOPRINT_API_KEY=... python3 scripts/mode_switch.py printer --backend octoprint --host octopi.local
 ```
 

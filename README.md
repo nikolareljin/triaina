@@ -33,7 +33,7 @@ host. The USB-C port is a console to that host, not a link to the MCU.
 | | Topology A (supported) | Topology B (experimental) |
 |---|---|---|
 | Klipper host | Printer's built-in Linux host | Raspberry Pi |
-| Link Pi to printer | Wi-Fi or Ethernet, HTTP to Moonraker | Pi GPIO UART (3.3 V, TX/RX/GND) wired to the MCU's UART pins inside the base; **not** the USB-C port |
+| Link Pi to printer | Ethernet via a small switch (printer is wired-only), HTTP to Moonraker | Pi GPIO UART (3.3 V, TX/RX/GND) wired to the MCU's UART pins inside the base; **not** the USB-C port |
 | Printer changes | None | Open the base, wire to MCU pins, build and flash Klipper MCU firmware for that UART, stop the built-in Klipper |
 | USB 5 V | Optional console cable: **block pin 1 (VBUS) with Kapton tape** or a 5 V blocker | No 5 V between boards; share GND only |
 | Verified | Yes | No: MCU UART pins on the ZNP-K1 not confirmed on any board revision |
@@ -53,7 +53,7 @@ On the Pi:
 git clone --recursive https://github.com/nikolareljin/triaina.git
 cd triaina
 scripts/setup_pi.sh
-export TRIAINA_HOST=neptune4.local
+export TRIAINA_HOST=mkspi.local
 ```
 
 Upload `config/klipper_cutter_macros.cfg` next to `printer.cfg` (Fluidd >
@@ -71,7 +71,7 @@ Save & Restart. Then measure and set `offset_x`, `offset_y`, `offset_z`,
 
 ```bash
 scripts/setup_pi.sh --service            # installs, enables, starts; re-run to update
-sudo nano /etc/triaina/config.toml       # [printer] host = "neptune4.local"
+sudo nano /etc/triaina/config.toml       # [printer] host = "mkspi.local"
 sudo systemctl restart triaina
 ```
 

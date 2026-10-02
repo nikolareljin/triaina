@@ -7,7 +7,7 @@ The macros go on whichever machine runs Klipper: the printer's built-in host
 
 === "Fluidd (both topologies)"
 
-    1. Open Fluidd (`http://neptune4.local/` or `http://triaina.local/`).
+    1. Open Fluidd (`http://mkspi.local/` or `http://triaina.local/`).
     2. **Configuration** (the `{}` icon) > upload
        `config/klipper_cutter_macros.cfg` into the root next to `printer.cfg`.
 

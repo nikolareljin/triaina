@@ -18,7 +18,7 @@ DEFAULT_PATH = Path("/etc/triaina/config.toml")
 
 @dataclass
 class PrinterConfig:
-    host: str = "neptune4.local"
+    host: str = "mkspi.local"
     port: int = 7125
     api_key: Optional[str] = None
     timeout: float = 10.0

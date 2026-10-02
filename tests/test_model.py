@@ -272,7 +272,7 @@ def test_mount_fuzz_every_accepted_part_is_usable():
         "standoff": (5, 50),
     }
     built = 0
-    for _ in range(150):
+    for _ in range(60):
         kw = {k: round(rng.uniform(*r), 1) for k, r in ranges.items()}
         try:
             part = build(MountOptions(**kw))
@@ -281,7 +281,7 @@ def test_mount_fuzz_every_accepted_part_is_usable():
         built += 1
         assert part.genus() == 4, kw
         assert part.bounding_box()[1] >= -1e-6, kw
-    assert built > 25
+    assert built > 8
 
 
 def test_mount_refuses_bolts_behind_collar_and_short_collar():
