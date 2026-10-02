@@ -1,6 +1,7 @@
 # mode_switch.py
 
-File: [`scripts/mode_switch.py`](https://github.com/nikolareljin/triaina/blob/main/scripts/mode_switch.py).
+CLI: [`scripts/mode_switch.py`](https://github.com/nikolareljin/triaina/blob/main/scripts/mode_switch.py), code in
+[`triaina/printer.py`](https://github.com/nikolareljin/triaina/blob/main/triaina/printer.py) (also used by the service).
 Standard library only. Runs from the Pi or from any machine on the same network.
 
 ```bash

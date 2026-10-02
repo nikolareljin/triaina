@@ -14,7 +14,8 @@ files and switches modes.
 | [Klipper macros](reference/klipper-macros.md) | `CUTTER_MODE`, `PRINTER_MODE`, `CUT_PLUNGE`, `CUT_RETRACT` |
 | [gcode_preprocessor.py](reference/gcode-preprocessor.md) | Turns Inkscape / Inkcut / LightBurn G-code into safe cutter G-code |
 | [mode_switch.py](reference/mode-switch.md) | Switches modes over Moonraker or OctoPrint |
-| [setup_pi.sh](reference/setup-pi.md) | Provisions the Pi: packages and venv |
+| [setup_pi.sh](reference/setup-pi.md) | Provisions the Pi: packages, venv, and the service |
+| [Dashboard](use/dashboard.md) | Service on the Pi: live status, mode switch, cut and print jobs |
 
 ## Start here
 
@@ -24,7 +25,7 @@ files and switches modes.
 4. [Mounting the knife](hardware/knife-mount.md)
 5. [Raspberry Pi setup](setup/pi.md), [Klipper macros](setup/klipper.md),
    [Calibrating the knife](setup/calibration.md)
-6. [Cutting a sticker](use/workflow.md)
+6. [Dashboard service](setup/service.md), then [Cutting a sticker](use/workflow.md)
 
 <figure class="diagram" markdown>
 ![Network wiring diagram](assets/img/wiring-network.svg)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gcode_preprocessor import (
+from triaina.preprocess import (
     PLUNGE,
     RETRACT,
     Options,

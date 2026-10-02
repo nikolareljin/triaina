@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>triaina</title>
+  <link rel="icon" href="logo.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <img src="logo.svg" alt="" width="36" height="36">
+    <h1>triaina</h1>
+    <span id="conn" class="pill off">connecting</span>
+    <nav><a id="fluidd" href="#" target="_blank" rel="noopener">Fluidd</a> <a href="api/docs" target="_blank" rel="noopener">API</a></nav>
+  </header>
+
+  <main>
+    <section class="card" id="printer">
+      <h2>Printer</h2>
+      <div class="grid">
+        <div><span class="label">Klipper</span><span id="klippy">-</span></div>
+        <div><span class="label">State</span><span id="state">-</span></div>
+        <div><span class="label">Mode</span><span id="mode">-</span></div>
+        <div><span class="label">Blade</span><span id="blade">-</span></div>
+        <div><span class="label">Nozzle</span><span id="nozzle">-</span></div>
+        <div><span class="label">Bed</span><span id="bed">-</span></div>
+        <div><span class="label">Homed</span><span id="homed">-</span></div>
+        <div><span class="label">File</span><span id="file">-</span></div>
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <p id="message" class="muted"></p>
+      <div class="buttons">
+        <button data-mode="cutter">Cutter mode</button>
+        <button data-mode="printer">Printer mode</button>
+        <button data-action="pause">Pause</button>
+        <button data-action="resume">Resume</button>
+        <button data-action="cancel">Cancel</button>
+        <button id="estop" class="danger">Emergency stop</button>
+      </div>
+    </section>
+
+    <section class="card" id="camera-card" hidden>
+      <h2>Camera</h2>
+      <img id="camera" alt="Printer camera">
+    </section>
+
+    <section class="card">
+      <h2>New job</h2>
+      <form id="upload">
+        <label>Type
+          <select name="kind" id="kind"></select>
+        </label>
+        <label class="drop" id="drop">
+          <input type="file" name="file" id="fileinput" required>
+          <span id="dropText">Drop a G-code file or click to choose</span>
+        </label>
+        <button type="submit">Upload</button>
+      </form>
+      <p class="muted">Cut G-code (Kiri:Moto, Inkcut, Inkscape, LightBurn) is made safe by the preprocessor: heaters off, knife macros, feed cap.</p>
+    </section>
+
+    <section class="card wide">
+      <h2>Jobs</h2>
+      <table>
+        <thead><tr><th>#</th><th>Name</th><th>Type</th><th>State</th><th></th></tr></thead>
+        <tbody id="jobs"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <dialog id="confirm">
+    <form method="dialog">
+      <h3>Start job <span id="confirmName"></span>?</h3>
+      <label class="check"><input type="checkbox" id="confirmBox"> <span id="confirmText"></span></label>
+      <menu>
+        <button value="cancel">Back</button>
+        <button value="ok" id="confirmOk" disabled>Start</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

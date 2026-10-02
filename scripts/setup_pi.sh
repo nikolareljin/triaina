@@ -9,8 +9,12 @@
 #      udev. That port is the built-in Linux host's serial console (1500000
 #      baud), useful for recovery. It is NOT a link to the MCU, and normal use
 #      (Moonraker over the network) needs no cable at all.
+#   4. with --service: installs the dashboard to /opt/triaina as a systemd
+#      service that starts on boot and restarts on failure (user `triaina`,
+#      config /etc/triaina/config.toml, data /var/lib/triaina), then checks
+#      http://127.0.0.1:<port>/healthz. Re-run after `git pull` to update.
 #
-# Usage: scripts/setup_pi.sh [--udev [--vid XXXX --pid XXXX]] [--skip-apt] [--dry-run]
+# Usage: scripts/setup_pi.sh [--service] [--udev [--vid XXXX --pid XXXX]] [--skip-apt] [--dry-run]
 # Docs:  docs/setup/pi.md
 set -euo pipefail
 
@@ -18,7 +22,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VENV_DIR="$REPO_ROOT/.venv"
 UDEV_RULE="/etc/udev/rules.d/99-triaina.rules"
-APT_PACKAGES=(python3 python3-venv python3-pip usbutils)
+SERVICE_USER="triaina"
+INSTALL_DIR="/opt/triaina"
+CONFIG_FILE="/etc/triaina/config.toml"
+UNIT_FILE="/etc/systemd/system/triaina.service"
+APT_PACKAGES=(python3 python3-venv python3-pip usbutils curl)
 
 # USB-serial bridges seen behind the Neptune 4 USB-C console port. Order
 # matters: first match wins. Pass --vid/--pid if lsusb shows something else.
@@ -40,13 +48,14 @@ else
 fi
 
 usage() {
-  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 VID=""
 PID=""
 SKIP_APT=false
 WITH_UDEV=false
+WITH_SERVICE=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
@@ -55,6 +64,7 @@ while [[ $# -gt 0 ]]; do
     --pid) PID="${2:?--pid needs a value}"; shift 2 ;;
     --skip-apt) SKIP_APT=true; shift ;;
     --udev) WITH_UDEV=true; shift ;;
+    --service) WITH_SERVICE=true; shift ;;
     --skip-udev) log_warn "--skip-udev is now the default; flag ignored"; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -90,6 +100,9 @@ SUDO=""
 if [[ $EUID -ne 0 ]]; then
   SUDO="sudo"
 fi
+# Read-only checks: no sudo under --dry-run, so a preview never asks for a password.
+CHECK_SUDO="$SUDO"
+$DRY_RUN && CHECK_SUDO=""
 
 install_apt_packages() {
   local missing=() pkg
@@ -174,6 +187,66 @@ ensure_dialout() {
   run $SUDO usermod -aG dialout "$user"
 }
 
+# Copy a file into place only when the content differs. Returns 0 if it changed.
+install_if_changed() {
+  local src="$1" dest="$2" mode="$3" owner="$4"
+  if $CHECK_SUDO test -f "$dest" && $CHECK_SUDO cmp -s "$src" "$dest"; then
+    return 1
+  fi
+  run $SUDO install -D -m "$mode" -o "${owner%%:*}" -g "${owner##*:}" "$src" "$dest"
+  return 0
+}
+
+install_service() {
+  local port unit_changed=false
+  if ! id "$SERVICE_USER" >/dev/null 2>&1; then
+    log_info "creating system user $SERVICE_USER"
+    run $SUDO useradd --system --home-dir /var/lib/triaina --shell /usr/sbin/nologin "$SERVICE_USER"
+  fi
+
+  if [[ ! -x "$INSTALL_DIR/.venv/bin/python" ]]; then
+    log_info "creating $INSTALL_DIR/.venv"
+    run $SUDO mkdir -p "$INSTALL_DIR"
+    run $SUDO python3 -m venv "$INSTALL_DIR/.venv"
+  fi
+  # A local path is always rebuilt, so this also updates after `git pull`.
+  log_info "installing triaina into $INSTALL_DIR/.venv"
+  run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet --upgrade pip
+  run $SUDO "$INSTALL_DIR/.venv/bin/python" -m pip install --quiet "$REPO_ROOT"
+
+  # Never overwrite a config the user has edited.
+  if $CHECK_SUDO test -f "$CONFIG_FILE"; then
+    log_info "keeping existing $CONFIG_FILE"
+  else
+    log_info "writing default $CONFIG_FILE (edit [printer] host)"
+    install_if_changed "$REPO_ROOT/deploy/config.example.toml" "$CONFIG_FILE" 0640 "root:$SERVICE_USER" || true
+  fi
+
+  if install_if_changed "$REPO_ROOT/deploy/triaina.service" "$UNIT_FILE" 0644 "root:root"; then
+    unit_changed=true
+    run $SUDO systemctl daemon-reload
+  fi
+  run $SUDO systemctl enable triaina.service
+  # Restart every time: the package may have changed even when the unit did not.
+  run $SUDO systemctl restart triaina.service
+  $unit_changed && log_info "installed $UNIT_FILE"
+
+  $DRY_RUN && return 0
+  # Read the port the way the service does, so [printer] port is never mistaken for it.
+  port="$($SUDO "$INSTALL_DIR/.venv/bin/python" -c \
+    "from pathlib import Path; from triaina.config import load; print(load(Path('$CONFIG_FILE')).server.port)")"
+  local _
+  for _ in $(seq 1 30); do
+    if curl -fsS "http://127.0.0.1:$port/healthz" >/dev/null 2>&1; then
+      log_info "dashboard up: http://$(hostname).local:$port/"
+      return 0
+    fi
+    sleep 1
+  done
+  log_error "service did not answer on port $port within 30 s; see: journalctl -u triaina -n 50"
+  return 1
+}
+
 main() {
   if [[ "$(uname -s)" != "Linux" ]]; then
     log_error "setup_pi.sh targets Linux (Raspberry Pi OS); got $(uname -s)"
@@ -184,6 +257,9 @@ main() {
   if $WITH_UDEV; then
     install_udev_rule
     ensure_dialout
+  fi
+  if $WITH_SERVICE; then
+    install_service
   fi
   log_info "done. Next: docs/setup/klipper.md"
   $WITH_UDEV && log_info "printer console: screen /dev/triaina 1500000 (after replug)"

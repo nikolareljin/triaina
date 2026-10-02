@@ -55,8 +55,8 @@ run_check() {
 
 run_check "public-boundary scan" bash "$SCRIPT_DIR/check-private-names.sh"
 run_check "CHANGELOG header format" bash "$SCRIPT_DIR/check-changelog.sh"
-run_check "black" "$PY" -m black --check scripts tests
-run_check "flake8" "$PY" -m flake8 scripts tests
+run_check "black" "$PY" -m black --check triaina scripts tests
+run_check "flake8" "$PY" -m flake8 triaina scripts tests
 run_check "pytest" "$PY" -m pytest -q
 run_check "bash -n setup_pi.sh" bash -n scripts/setup_pi.sh
 

@@ -30,6 +30,6 @@ jobs:
       python_version: "3.11"
       fetch_depth: 1
       install_command: "python -m pip install -r requirements.txt"
-      lint_command: "python -m black --check scripts tests && python -m flake8 scripts tests"
+      lint_command: "python -m black --check triaina scripts tests && python -m flake8 triaina scripts tests"
       test_command: "python -m pytest"
       timeout_minutes: 10

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Dashboard service (`python -m triaina serve`): live printer state, mode switch, cut and print G-code jobs with a physical-setup confirmation, pause/resume/cancel, emergency stop, camera. systemd unit, `setup_pi.sh --service`, optional token.
+- Code moved into the `triaina` package (`preprocess`, `printer`); `scripts/*.py` are thin CLI wrappers.
 - `mode_switch.py upload FILE [--start]`: upload a job to Moonraker or OctoPrint, optionally start it.
 - `setup_pi.sh`: udev rule is opt-in (`--udev`) and targets the USB-C console bridge; the port is the printer host's console, not the MCU.
 - Docs: Pi-as-Klipper-host (Topology B) corrected and marked experimental: it needs the MCU UART inside the base, not USB-C; new Existing tools page (Kiri:Moto, DXF2GCODE, Inkcut, Moonraker, OpenNept4une, KIAUH); Inkcut profile writes to a file.

@@ -1,0 +1,26 @@
+# triaina service configuration: /etc/triaina/config.toml
+# Every key is optional; these are the defaults unless noted.
+
+[printer]
+# The Neptune 4's address on your network (Moonraker port 7125).
+host = "neptune4.local"
+port = 7125
+# api_key = ""            # only if Moonraker authorization is enabled
+timeout = 10.0
+# web_url = "http://neptune4.local/"   # Fluidd link; derived from host if empty
+
+[server]
+bind = "0.0.0.0"          # all interfaces on the Pi; reach it at http://triaina.local:8080
+port = 8080
+# auth_token = ""         # set to require a token (Authorization: Bearer, or ?token= once)
+
+[paths]
+data_dir = "/var/lib/triaina"
+
+[cut]
+max_feed = 1500.0
+default_feed = 1500.0
+z_threshold = 0.0
+
+[camera]
+# stream_url = "http://neptune4.local/webcam/?action=stream"

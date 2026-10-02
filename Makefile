@@ -1,7 +1,7 @@
 # triaina developer shortcuts. `make help` lists targets.
 VENV   ?= .venv
 PY     := $(VENV)/bin/python
-SRC    := scripts tests
+SRC    := triaina scripts tests
 TAG    ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 DIST   := dist/triaina-$(TAG)
 
@@ -39,7 +39,9 @@ docs-serve: ## preview docs on http://127.0.0.1:8000
 dist: ## build dist/triaina-<tag>.tar.gz
 	rm -rf $(DIST) $(DIST).tar.gz
 	mkdir -p $(DIST)/scripts
-	cp -r config assets README.md LICENSE CHANGELOG.md requirements.txt $(DIST)/
+	cp -r config assets deploy README.md LICENSE CHANGELOG.md pyproject.toml requirements.txt $(DIST)/
+	cp -rL triaina $(DIST)/
+	find $(DIST)/triaina -name __pycache__ -type d -prune -exec rm -rf {} +
 	cp scripts/gcode_preprocessor.py scripts/mode_switch.py scripts/setup_pi.sh $(DIST)/scripts/
 	@if [ -f scripts/script-helpers/helpers.sh ]; then \
 		mkdir -p $(DIST)/scripts/script-helpers && \
