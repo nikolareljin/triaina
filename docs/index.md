@@ -26,6 +26,7 @@ files and switches modes.
 5. [Raspberry Pi setup](setup/pi.md), [Klipper macros](setup/klipper.md),
    [Calibrating the knife](setup/calibration.md)
 6. [Dashboard service](setup/service.md), then [Cutting a sticker](use/workflow.md)
+7. Once, with the hardware: [Commissioning checklist](use/commissioning.md)
 
 <figure class="diagram" markdown>
 ![Network wiring diagram](assets/img/wiring-network.svg)

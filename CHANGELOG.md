@@ -10,7 +10,7 @@
 - Cut jobs from design files: SVG, DXF, PDF, AI, EPS, PNG and JPG converted on the Pi with blade-offset compensation, inner-first cut order, optional weeding border, size/fit options and an SVG preview. Designs are placed only where the knife and the nozzle can both reach.
 - Print jobs built on the Pi: a 2D design extruded into a plate, STL/3MF models, and a parametric drag-knife clamp; sliced with PrusaSlicer and a shipped Neptune 4 profile. Models are measured and shrunk to fit the printer, with a scale option for unit-less STL.
 - `mode_switch.py upload FILE [--start]`.
-- Docs: Existing tools page; wired network through a small switch, with a parts list entry.
+- Docs: Existing tools page; wired network through a small switch, with a parts list entry; commissioning checklist for the hardware stage.
 
 ### Changed
 
