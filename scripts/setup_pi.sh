@@ -27,8 +27,9 @@ INSTALL_DIR="/opt/triaina"
 CONFIG_FILE="/etc/triaina/config.toml"
 UNIT_FILE="/etc/systemd/system/triaina.service"
 APT_PACKAGES=(python3 python3-venv python3-pip usbutils curl)
-# Design conversion in the service: PDF/AI (pdftocairo), EPS (gs), PNG/JPG (potrace).
-SERVICE_APT_PACKAGES=(poppler-utils ghostscript potrace)
+# Design conversion in the service: PDF/AI (pdftocairo), EPS (gs), PNG/JPG (potrace);
+# slicing for print jobs (prusa-slicer, about 80 MB with its libraries).
+SERVICE_APT_PACKAGES=(poppler-utils ghostscript potrace prusa-slicer)
 
 # USB-serial bridges seen behind the Neptune 4 USB-C console port. Order
 # matters: first match wins. Pass --vid/--pid if lsusb shows something else.
@@ -119,7 +120,7 @@ install_apt_packages() {
   fi
   log_info "installing: ${missing[*]}"
   run $SUDO apt-get update
-  run $SUDO apt-get install -y "${missing[@]}"
+  run $SUDO apt-get install -y --no-install-recommends "${missing[@]}"
 }
 
 setup_venv() {

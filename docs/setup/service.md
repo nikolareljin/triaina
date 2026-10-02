@@ -51,6 +51,8 @@ existing config file.
 | | `blade_offset`, `cutoff_deg`, `overcut` | `0.25`, `20`, `1.0` | Blade-offset compensation |
 | | `margin`, `bed_x`, `bed_y` | `5`, `225`, `225` | Usable area for designs, mm |
 | `[camera]` | `stream_url` | none | MJPEG stream shown on the dashboard |
+| `[print]` | `slicer` | first of `prusa-slicer`, `PrusaSlicer` on PATH | Slicer command for 3D jobs |
+| | `max_z` | `265` | Build height for fitting models |
 
 An unknown key or section stops the service with a clear error in the journal
 instead of being ignored.

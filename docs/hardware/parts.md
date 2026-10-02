@@ -19,7 +19,7 @@ order.
 | microSD card | 16-32 GB, A1, Class 10 | Raspberry Pi OS | [SanDisk Ultra 32 GB](https://www.amazon.com/dp/B073JWXGNT) | $9 |
 | Drag-knife holder | Roland CAMM-1 compatible, 10-12 mm body, spring loaded | Holds and swivels the blade | [Amazon search](https://www.amazon.com/s?k=roland+drag+knife+holder) | $10-20 |
 | Blades | Roland compatible, 45 deg (vinyl) and 60 deg (thick media) | The cutting edge | [Amazon search](https://www.amazon.com/s?k=roland+compatible+blades+45+60) | $8 per 5 |
-| Knife mount | Printed clamp for the holder | Fixes the holder beside the nozzle | Remix a holder mount from [Printables](https://www.printables.com/search/models?q=drag%20knife%20holder) to the Neptune 4 toolhead; see [Mounting the knife](knife-mount.md) | filament |
+| Knife mount | Printed clamp for the holder | Fixes the holder beside the nozzle | Generate it from the dashboard (Print knife mount), or remix one from [Printables](https://www.printables.com/search/models?q=drag%20knife%20holder); see [Mounting the knife](knife-mount.md) | filament |
 | Cutting mat | 12 x 12 in, medium tack (Cricut StandardGrip or similar) | Holds vinyl flat; protects the PEI sheet | [Cricut](https://www.cricut.com/en-us/search?q=standardgrip) | $15 for 3 |
 | Adhesive vinyl | Oracal 651 or equivalent | The material | [ORAFOL product page](https://www.orafol.com/en/americas/products/oracal-651-intermediate-cal); buy from a sign-supply shop | $10-20 per roll |
 
