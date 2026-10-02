@@ -10,9 +10,15 @@
 The dashboard can generate and print a clamp for the holder: job type **Print
 knife mount**, set the holder diameter, the spacing of the two mounting screws
 and how far in front of the plate the holder sits (standoff). It is a generic
-clamp (a collar with a clamp screw on a plate with two slotted M3 holes), not
-a Neptune 4 specific part: measure your toolhead and check the STL before
-printing. See [Printing from the dashboard](../use/printing.md).
+clamp, not a Neptune 4 specific part: a collar slit at the front and closed by
+an M3 screw through two clamp ears, on a plate with two mounting holes slotted
+4 mm for height adjustment. Measure your toolhead and check the STL before
+printing.
+
+The generator refuses layouts that would not work, with the reason: mounting
+holes hidden behind the collar (no screwdriver access), a collar too short for
+the slotted holes, a bore cutting into the plate, or a collar sticking out
+behind the plate into the toolhead. See [Printing from the dashboard](../use/printing.md).
 
 ## Holder
 

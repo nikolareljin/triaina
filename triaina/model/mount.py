@@ -1,7 +1,7 @@
 """Parametric clamp for a Roland-style drag-knife holder.
 
-A collar that grips the holder body (with a slot and a clamp screw) on a flat
-plate with two slotted holes for bolting to the toolhead. It is a generic
+A collar that grips the holder body (a slot closed by an M3 screw through two
+clamp ears) on a flat plate with two slotted holes for bolting to the toolhead. It is a generic
 starting point: measure your holder and your toolhead's screw positions, and
 check the part against the Neptune 4 head before cutting with it. The holder
 axis sits `standoff` mm in front of the plate.
@@ -12,6 +12,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from triaina.model import ModelError
+
+#: Clamp screw through the ears: M3 clearance hole, mm.
+CLAMP_SCREW = 3.4
+#: Each clamp ear's thickness either side of the slot, mm.
+EAR_THICKNESS = 4.0
 
 
 @dataclass
@@ -55,6 +60,22 @@ class MountOptions:
                 "bolt holes do not fit the plate: widen the plate or reduce the spacing"
             )
         outer_r = bore / 2 + self.wall
+        # Screws go in from the front: each hole, plus room for the screw head
+        # (about twice the hole), must clear the collar and its bridge, or the
+        # hole ends blind in the bridge and no screwdriver reaches it.
+        if self.bolt_spacing / 2 - self.bolt_hole < outer_r:
+            raise ModelError(
+                "bolt holes would sit behind the collar: increase bolt spacing to at least"
+                f" {2 * (outer_r + self.bolt_hole):.1f} mm, or reduce holder diameter/wall"
+            )
+        # The mounting holes are slotted 4 mm for height adjustment; with the
+        # hole and 1.5 mm of material above and below, they must fit the height.
+        need = 4.0 + self.bolt_hole + 3.0
+        if self.collar_height < need:
+            raise ModelError(
+                f"collar height must be at least {need:.1f} mm for {self.bolt_hole} mm"
+                " slotted mounting holes"
+            )
         if self.standoff < bore / 2 + 1:
             raise ModelError("standoff too small: the bore would cut into the plate")
         if self.plate_thickness + self.standoff - outer_r < 0:
@@ -83,15 +104,21 @@ def build(opts: MountOptions):
     cy = opts.plate_thickness + opts.standoff
     collar = m.Manifold.cylinder(h, outer_r, outer_r, seg).translate((0, cy, 0))
     bridge = m.Manifold.cube((2 * outer_r, cy, h)).translate((-outer_r, 0, 0))
-    body = plate + collar + bridge
+    # Clamp ears: two lugs in front of the collar either side of the slot,
+    # with the clamp screw across them. Through the collar wall instead, a
+    # screw wider than the wall would break into the bore and clamp nothing.
+    ear_len = CLAMP_SCREW + 5.0
+    ear_w = 1.5 + 2 * EAR_THICKNESS
+    ears = m.Manifold.cube((ear_w, ear_len + 1.0, h)).translate((-ear_w / 2, cy + outer_r - 1.0, 0))
+    body = plate + collar + bridge + ears
 
     bore = m.Manifold.cylinder(h + 2, bore_r, bore_r, seg).translate((0, cy, -1))
-    # Clamp slot through the front of the collar, and a clamp screw across it.
-    slot = m.Manifold.cube((1.5, outer_r + 1, h + 2)).translate((-0.75, cy, -1))
+    # Slot through the front of the collar and between the ears.
+    slot = m.Manifold.cube((1.5, outer_r + ear_len + 2, h + 2)).translate((-0.75, cy, -1))
     screw = (
-        m.Manifold.cylinder(2 * outer_r + 6, opts.bolt_hole / 2, opts.bolt_hole / 2, 32)
+        m.Manifold.cylinder(ear_w + 2, CLAMP_SCREW / 2, CLAMP_SCREW / 2, 32)
         .rotate((0, 90, 0))
-        .translate((-(outer_r + 3), cy + bore_r + opts.wall / 2, h / 2))
+        .translate((-(ear_w / 2 + 1), cy + outer_r + ear_len / 2, h / 2))
     )
     holes = m.Manifold()
     for x in (-opts.bolt_spacing / 2, opts.bolt_spacing / 2):

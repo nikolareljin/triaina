@@ -207,7 +207,9 @@ def test_real_3mf_input(tmp_path):
         capture_output=True,
     )
     stats = slice_model(mf, tmp_path / "m.gcode", SliceOptions(layer_height=0.3))
-    assert stats["final_mm"] == [40.0, 26.9, 20.0]
+    x0, y0, z0, x1, y1, z1 = build(MountOptions()).bounding_box()
+    want = [round(x1 - x0, 1), round(y1 - y0, 1), round(z1 - z0, 1)]
+    assert stats["final_mm"] == pytest.approx(want, abs=0.15)
     text = (tmp_path / "m.gcode").read_text()
     assert "G92 E0" in text and "M73 P" in text
 
@@ -240,6 +242,50 @@ class TestNesting:
 
 def test_mount_collar_never_behind_plate():
     with pytest.raises(ModelError, match="behind the plate"):
-        MountOptions(holder_diameter=10, wall=10, plate_thickness=3, standoff=7).check()
+        MountOptions(
+            holder_diameter=10,
+            wall=10,
+            plate_thickness=3,
+            standoff=7,
+            bolt_spacing=60,
+            plate_width=80,
+        ).check()
     part = build(MountOptions())
     assert part.bounding_box()[1] == pytest.approx(0)  # nothing behind the plate face
+
+
+def test_mount_fuzz_every_accepted_part_is_usable():
+    """Random parameters in range: either refused with a reason, or a part
+    with all four through-features (2 slotted mounting holes, the clamp screw
+    through both ears) and nothing behind the plate."""
+    import random
+
+    rng = random.Random(1234)
+    ranges = {
+        "holder_diameter": (4, 30),
+        "wall": (2, 10),
+        "collar_height": (8, 60),
+        "plate_width": (20, 120),
+        "plate_thickness": (3, 15),
+        "bolt_spacing": (10, 110),
+        "bolt_hole": (2, 8),
+        "standoff": (5, 50),
+    }
+    built = 0
+    for _ in range(150):
+        kw = {k: round(rng.uniform(*r), 1) for k, r in ranges.items()}
+        try:
+            part = build(MountOptions(**kw))
+        except ModelError:
+            continue
+        built += 1
+        assert part.genus() == 4, kw
+        assert part.bounding_box()[1] >= -1e-6, kw
+    assert built > 25
+
+
+def test_mount_refuses_bolts_behind_collar_and_short_collar():
+    with pytest.raises(ModelError, match="behind the collar"):
+        MountOptions(bolt_spacing=20).check()
+    with pytest.raises(ModelError, match="collar height"):
+        MountOptions(collar_height=9, bolt_hole=5).check()
