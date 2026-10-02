@@ -159,3 +159,9 @@ def test_start_rejected_for_mode_switch():
     with pytest.raises(SystemExit) as exc:
         mode_switch.main(["cutter", "--start"])
     assert exc.value.code == 2
+
+
+def test_multipart_filename_cannot_break_header():
+    body, _ = mode_switch.multipart({}, 'a"b\r\nX-Evil: 1.gcode', b"G1")
+    assert b'filename="a_bX-Evil: 1.gcode"' in body
+    assert b"\r\nX-Evil" not in body

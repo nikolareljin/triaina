@@ -100,6 +100,8 @@ class Client:
 def multipart(fields: dict, filename: str, content: bytes) -> tuple[bytes, str]:
     """Encode form fields plus one file as multipart/form-data."""
     boundary = uuid.uuid4().hex
+    # Quotes or line breaks in the name would end the header early.
+    filename = filename.replace("\\", "_").replace('"', "_").replace("\r", "").replace("\n", "")
     parts = []
     for name, value in fields.items():
         parts.append(
