@@ -14,12 +14,12 @@ files and switches modes.
 | [Klipper macros](reference/klipper-macros.md) | `CUTTER_MODE`, `PRINTER_MODE`, `CUT_PLUNGE`, `CUT_RETRACT` |
 | [gcode_preprocessor.py](reference/gcode-preprocessor.md) | Turns Inkscape / Inkcut / LightBurn G-code into safe cutter G-code |
 | [mode_switch.py](reference/mode-switch.md) | Switches modes over Moonraker or OctoPrint |
-| [setup_pi.sh](reference/setup-pi.md) | Provisions the Pi: venv, udev rule `/dev/triaina` |
+| [setup_pi.sh](reference/setup-pi.md) | Provisions the Pi: packages and venv |
 
 ## Start here
 
 1. [Parts and where to buy](hardware/parts.md)
-2. [System overview](hardware/overview.md): pick Topology A or B
+2. [System overview](hardware/overview.md) and [Existing tools](hardware/prior-art.md)
 3. [Wiring the Raspberry Pi](hardware/wiring.md)
 4. [Mounting the knife](hardware/knife-mount.md)
 5. [Raspberry Pi setup](setup/pi.md), [Klipper macros](setup/klipper.md),
@@ -27,6 +27,6 @@ files and switches modes.
 6. [Cutting a sticker](use/workflow.md)
 
 <figure class="diagram" markdown>
-![Topology A wiring diagram](assets/img/wiring-network.svg)
-<figcaption>Recommended setup: Pi and printer on the same network.</figcaption>
+![Network wiring diagram](assets/img/wiring-network.svg)
+<figcaption>Pi and printer on the same network; jobs go through Moonraker.</figcaption>
 </figure>

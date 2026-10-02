@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif" font-size="13">
-  <title>Topology A: Raspberry Pi on the network, talking to the Neptune 4 built-in Moonraker</title>
+  <title>Raspberry Pi on the network, talking to the Neptune 4 built-in Moonraker</title>
   <rect width="900" height="520" fill="#0f172a"/>
-  <text x="24" y="34" font-size="16" fill="#f8fafc">Topology A (recommended): network only, no printer rework</text>
+  <text x="24" y="34" font-size="16" fill="#f8fafc">Network connection: no printer rework, no USB cable</text>
 
   <!-- mains -->
   <rect x="24" y="420" width="120" height="60" rx="6" fill="#1e293b" stroke="#f87171"/>

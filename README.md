@@ -18,7 +18,7 @@ diagrams, parts list with store links, setup and calibration).
 | `config/inkcut_profile.json` | Inkcut device settings |
 | `scripts/gcode_preprocessor.py` | Inkscape / Inkcut / LightBurn G-code to safe cutter G-code |
 | `scripts/mode_switch.py` | Switch modes over Moonraker or OctoPrint |
-| `scripts/setup_pi.sh` | Pi provisioning: venv, udev rule for `/dev/triaina` |
+| `scripts/setup_pi.sh` | Pi provisioning: packages and venv |
 | `assets/logo.svg` | Logo |
 
 The Python scripts use only the standard library.
@@ -26,18 +26,22 @@ The Python scripts use only the standard library.
 ## Hardware
 
 The Neptune 4 already runs Klipper, Moonraker and Fluidd on a built-in Linux
-host. The Pi can join it two ways:
+host. The USB-C port is a console to that host, not a link to the MCU.
 
-| | Topology A (recommended) | Topology B (advanced) |
+| | Topology A (supported) | Topology B (experimental) |
 |---|---|---|
-| Link | Wi-Fi or Ethernet, HTTP to the printer's Moonraker | USB to the MCU; Pi becomes the Klipper host |
-| Printer changes | None | Reflash MCU for USB, stop built-in Klipper |
-| USB 5 V | n/a | **Block pin 1 (VBUS) with Kapton tape** or a 5 V blocker, so the two supplies do not back-feed |
+| Klipper host | Printer's built-in Linux host | Raspberry Pi |
+| Link Pi to printer | Wi-Fi or Ethernet, HTTP to Moonraker | Pi GPIO UART (3.3 V, TX/RX/GND) wired to the MCU's UART pins inside the base; **not** the USB-C port |
+| Printer changes | None | Open the base, wire to MCU pins, build and flash Klipper MCU firmware for that UART, stop the built-in Klipper |
+| USB 5 V | Optional console cable: **block pin 1 (VBUS) with Kapton tape** or a 5 V blocker | No 5 V between boards; share GND only |
+| Verified | Yes | No: MCU UART pins on the ZNP-K1 not confirmed on any board revision |
 
 Diagrams, pinout and step-by-step wiring:
 [Wiring the Raspberry Pi](https://nikolareljin.github.io/triaina/hardware/wiring/).
 Parts with store links:
 [Parts and where to buy](https://nikolareljin.github.io/triaina/hardware/parts/).
+What triaina reuses (Kiri:Moto, Moonraker, OpenNept4une, KIAUH) and what it
+adds: [Existing tools](https://nikolareljin.github.io/triaina/hardware/prior-art/).
 
 ## Quick start
 
@@ -46,7 +50,7 @@ On the Pi:
 ```bash
 git clone --recursive https://github.com/nikolareljin/triaina.git
 cd triaina
-scripts/setup_pi.sh --skip-udev          # Topology A; drop the flag for B
+scripts/setup_pi.sh
 export TRIAINA_HOST=neptune4.local
 ```
 
@@ -64,12 +68,11 @@ Save & Restart. Then measure and set `offset_x`, `offset_y`, `offset_z`,
 ## Cutting a sticker
 
 ```bash
-# 1. Inkscape: Object to Path, export G-code (Gcodetools), or LightBurn/Inkcut
-# 2. Preprocess
+# 1. Generate G-code with blade offset: Kiri:Moto drag-knife mode, DXF2GCODE or Inkcut
+# 2. Make it safe for this machine
 .venv/bin/python scripts/gcode_preprocessor.py sticker.gcode --max-feed 1500
-# 3. Upload and start
-curl -F "file=@sticker.cut.gcode" "http://$TRIAINA_HOST:7125/server/files/upload"
-curl -X POST "http://$TRIAINA_HOST:7125/printer/print/start?filename=sticker.cut.gcode"
+# 3. Upload and start through Moonraker
+.venv/bin/python scripts/mode_switch.py upload sticker.cut.gcode --start
 ```
 
 The output file runs `CUTTER_MODE` (heaters and fans off, accel 1000 mm/s^2,

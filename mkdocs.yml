@@ -71,6 +71,7 @@ nav:
   - Home: index.md
   - Hardware:
       - Parts and where to buy: hardware/parts.md
+      - Existing tools: hardware/prior-art.md
       - System overview: hardware/overview.md
       - Wiring the Raspberry Pi: hardware/wiring.md
       - Mounting the knife: hardware/knife-mount.md

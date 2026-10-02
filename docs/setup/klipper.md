@@ -1,7 +1,7 @@
 # Klipper macros
 
 The macros go on whichever machine runs Klipper: the printer's built-in host
-(Topology A) or the Pi (Topology B).
+(Topology A) or the Pi (experimental Topology B).
 
 ## 1. Upload the file
 

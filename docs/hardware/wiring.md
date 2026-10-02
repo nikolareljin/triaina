@@ -1,15 +1,16 @@
 # Wiring the Raspberry Pi
 
-Read [System overview](overview.md) first to choose a topology.
+Read [System overview](overview.md) first. The Pi and the printer talk over the
+network; the USB cable described at the end is optional.
 
 !!! danger "Mains"
     The printer PSU is mains powered. Never open the printer base with the
     power cord connected. Nothing in triaina requires touching mains wiring.
 
-## Topology A: network only (recommended)
+## Network connection
 
 <figure class="diagram" markdown>
-![Topology A wiring diagram](../assets/img/wiring-network.svg)
+![Network wiring diagram](../assets/img/wiring-network.svg)
 <figcaption>Pi and printer each have their own supply and join the same network. No cable between them.</figcaption>
 </figure>
 
@@ -38,38 +39,39 @@ Read [System overview](overview.md) first to choose a topology.
     ```
 
     Replace `neptune4.local` with your printer's name or address.
-5. Continue with [Raspberry Pi setup](../setup/pi.md) using `--skip-udev`.
+5. Continue with [Raspberry Pi setup](../setup/pi.md).
 
-## Topology B: Pi as the Klipper host (advanced)
+## Optional: USB-C console cable
+
+The printer's USB-C port is the built-in host's serial console. It is useful
+when the printer drops off the network: from the Pi you can log in, check
+`ip addr` and restart services. It carries no print jobs.
 
 <figure class="diagram" markdown>
-![Topology B wiring diagram](../assets/img/wiring-usb.svg)
-<figcaption>Pi runs Klipper and talks to the printer's MCU over USB. The 5 V line in the cable is blocked.</figcaption>
+![Console cable diagram](../assets/img/wiring-console.svg)
+<figcaption>Optional recovery link. 5 V is blocked so the two supplies cannot back-feed.</figcaption>
 </figure>
-
-!!! warning "Unverified on every board revision"
-    ELEGOO has shipped more than one board revision. Before buying anything,
-    confirm on your unit that the external USB port reaches the STM32 MCU
-    (`lsusb` on the Pi shows a new device when you plug it in). If it only
-    reaches the built-in host, Topology B needs internal rewiring and is out of
-    scope for this guide.
-
-### Connections
 
 | # | From | To | Cable | Notes |
 |---|---|---|---|---|
-| 1 | Wall outlet | Pi PSU | Mains plug | |
-| 2 | Pi PSU | Pi micro-USB power | Captive micro-USB | The Pi must have its own supply |
-| 3 | Pi USB-A (any of the four) | Printer USB port | USB-A to printer connector, **pin 1 taped** | Data (D+, D-) and GND only |
-| 4 | Pi Ethernet / Wi-Fi | Router | | So you can reach Fluidd on the Pi |
-| 5 | Wall outlet | Printer PSU | Mains cord | |
+| 1 | Pi USB-A (any) | Printer USB-C | USB-A to USB-C, **pin 1 taped** | Data and GND only |
 
-### Blocking 5 V on the USB cable
+Then on the Pi:
+
+```bash
+scripts/setup_pi.sh --udev          # binds the console bridge to /dev/triaina
+screen /dev/triaina 1500000         # log in; Ctrl-A K to quit
+```
+
+Default login on OpenNept4une images is `mks` / `makerbase`; stock ELEGOO
+images differ by firmware version.
+
+### Blocking 5 V on the console cable
 
 Both boards have their own 5 V supply. With VBUS connected, whichever supply is
-higher pushes current into the other board. Symptoms range from the MCU staying
-half-powered with the printer off, to Pi undervoltage warnings, to a damaged
-regulator.
+higher pushes current into the other board. Symptoms range from the printer's
+board staying half-powered with the printer off, to Pi undervoltage warnings,
+to a damaged regulator.
 
 <figure class="device" markdown>
 ![USB-A pinout with pin 1 taped](../assets/img/usb-5v-block.svg)
@@ -93,35 +95,56 @@ regulator.
 
 A USB 5 V blocker adapter does the same job without tape. Put it on the Pi end.
 
-### Software for Topology B
+## Topology B: Pi as Klipper host (experimental)
 
-1. Install Klipper, Moonraker and Fluidd on the Pi (KIAUH is the usual
-   installer).
-2. Build Klipper MCU firmware for the Neptune 4's STM32 with USB as the
-   communication interface, and flash it following ELEGOO's or the
-   OpenNept4une project's instructions for your board revision.
-3. Stop the built-in host's Klipper service so two hosts do not fight over the
-   MCU.
-4. Run [setup_pi.sh](../setup/pi.md) without `--skip-udev`; the MCU is then
-   `/dev/triaina`.
+!!! danger "Unverified, opens the printer"
+    Nobody has confirmed the MCU UART pins on the Neptune 4 ZNP-K1 board for
+    this. Wrong pins or 5 V on a 3.3 V line can destroy the MCU or the Pi.
+    Unplug mains before opening the base. Use Topology A unless you accept that.
+
+The USB-C port cannot be used: it is the built-in host's console. The Pi has to
+reach the STM32 MCU over a UART instead.
+
+| # | Pi pin | Signal | To |
+|---|---|---|---|
+| 1 | 8 (GPIO14) | TXD, 3.3 V | MCU UART RX pin (to be identified on your board) |
+| 2 | 10 (GPIO15) | RXD, 3.3 V | MCU UART TX pin |
+| 3 | 6 | GND | MCU board GND |
+
+Never connect the Pi's 5 V pins (2, 4) to the printer. Each side keeps its own
+supply.
+
+Steps, in outline:
+
+1. Identify a free USART on the STM32 and its pins on the board (schematic,
+   OpenNept4une community, continuity tester). Record board revision and pins.
+2. Build Klipper MCU firmware for the board's STM32 with that USART as the
+   communication interface; flash it with the microSD method documented by
+   [OpenNept4une](https://github.com/OpenNeptune3D/OpenNept4une/wiki).
+3. On the Pi: `dtoverlay=disable-bt` in `/boot/firmware/config.txt` (gives the
+   full PL011 UART on `/dev/ttyAMA0`), disable the serial login console, install
+   Klipper, Moonraker and Fluidd with [KIAUH](https://github.com/dw-0/kiauh).
+4. Stop the built-in host's Klipper service so it does not fight for the MCU.
 5. In the Pi's `printer.cfg`:
 
     ```ini
     [mcu]
-    serial: /dev/triaina
+    serial: /dev/ttyAMA0
     baud: 250000
     restart_method: command
     ```
 
-    `baud` only matters for a USB-serial bridge (CH340); native USB ignores it.
-6. Copy the built-in host's `printer.cfg` sections (steppers, bed mesh, probe)
-   to the Pi. Do not invent these values: the stock file is the source of truth
-   for pins and rotation distances.
+    Copy steppers, probe and bed-mesh sections from the stock `printer.cfg`.
+6. Add `[include klipper_cutter_macros.cfg]` as in [Klipper macros](../setup/klipper.md),
+   and set `TRIAINA_HOST=localhost`.
+
+If you get this working, open an issue with the board revision and pins so it
+can move out of experimental.
 
 ## Checklist
 
 - [ ] Pi on its own 5.1 V supply
 - [ ] Pi and printer on the same network, Moonraker reachable from the Pi
-- [ ] (B only) 5 V pin blocked, verified with the printer off
-- [ ] (B only) `/dev/triaina` exists after replug
+- [ ] (console cable only) 5 V pin blocked, verified with the printer off
+- [ ] (Topology B only) UART at 3.3 V, GND shared, no 5 V between boards
 - [ ] Knife holder mounted, see [Mounting the knife](knife-mount.md)

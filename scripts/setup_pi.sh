@@ -4,10 +4,13 @@
 # Idempotent: safe to run again after a pull or a board swap. It
 #   1. installs python3, python3-venv and usbutils if missing (apt),
 #   2. creates or reuses .venv and installs requirements.txt into it,
-#   3. writes /etc/udev/rules.d/99-triaina.rules so the mainboard is /dev/triaina,
-#      only when the rule content changed, then reloads udev.
+#   3. with --udev only: writes /etc/udev/rules.d/99-triaina.rules so a USB
+#      cable to the printer's USB-C port appears as /dev/triaina, then reloads
+#      udev. That port is the built-in Linux host's serial console (1500000
+#      baud), useful for recovery. It is NOT a link to the MCU, and normal use
+#      (Moonraker over the network) needs no cable at all.
 #
-# Usage: scripts/setup_pi.sh [--vid XXXX --pid XXXX] [--skip-apt] [--skip-udev] [--dry-run]
+# Usage: scripts/setup_pi.sh [--udev [--vid XXXX --pid XXXX]] [--skip-apt] [--dry-run]
 # Docs:  docs/setup/pi.md
 set -euo pipefail
 
@@ -17,10 +20,11 @@ VENV_DIR="$REPO_ROOT/.venv"
 UDEV_RULE="/etc/udev/rules.d/99-triaina.rules"
 APT_PACKAGES=(python3 python3-venv python3-pip usbutils)
 
-# USB IDs seen on Neptune 4 MKS boards. Order matters: first match wins.
-#   1d50:614e  Klipper USB firmware on the STM32 (native USB)
-#   1a86:7523  CH340 USB-serial bridge
-KNOWN_IDS=("1d50:614e" "1a86:7523")
+# USB-serial bridges seen behind the Neptune 4 USB-C console port. Order
+# matters: first match wins. Pass --vid/--pid if lsusb shows something else.
+#   1a86:7523  CH340
+#   10c4:ea60  CP210x
+KNOWN_IDS=("1a86:7523" "10c4:ea60")
 
 # Prefer script-helpers (submodule at scripts/script-helpers). Fall back to
 # minimal local functions so a clone without --recursive still works.
@@ -36,13 +40,13 @@ else
 fi
 
 usage() {
-  sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 VID=""
 PID=""
 SKIP_APT=false
-SKIP_UDEV=false
+WITH_UDEV=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
@@ -50,13 +54,18 @@ while [[ $# -gt 0 ]]; do
     --vid) VID="${2:?--vid needs a value}"; shift 2 ;;
     --pid) PID="${2:?--pid needs a value}"; shift 2 ;;
     --skip-apt) SKIP_APT=true; shift ;;
-    --skip-udev) SKIP_UDEV=true; shift ;;
+    --udev) WITH_UDEV=true; shift ;;
+    --skip-udev) log_warn "--skip-udev is now the default; flag ignored"; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) log_error "unknown argument: $1"; usage; exit 2 ;;
   esac
 done
 
+if [[ -n "$VID" || -n "$PID" ]] && ! $WITH_UDEV; then
+  log_error "--vid/--pid only apply with --udev"
+  exit 2
+fi
 if [[ -n "$VID" || -n "$PID" ]] && [[ -z "$VID" || -z "$PID" ]]; then
   log_error "--vid and --pid must be given together"
   exit 2
@@ -131,12 +140,12 @@ install_udev_rule() {
     local found
     found="$(detect_board)"
     if [[ -z "$found" ]]; then
-      log_error "no known mainboard on USB. Connect it, or pass --vid/--pid (see: lsusb)"
+      log_error "no known console bridge on USB. Connect the printer USB-C port, or pass --vid/--pid (see: lsusb)"
       return 1
     fi
     VID="${found%%:*}"
     PID="${found##*:}"
-    log_info "detected mainboard $VID:$PID"
+    log_info "detected console bridge $VID:$PID"
   fi
 
   local rule
@@ -172,11 +181,13 @@ main() {
   fi
   $SKIP_APT || install_apt_packages
   setup_venv
-  if ! $SKIP_UDEV; then
+  if $WITH_UDEV; then
     install_udev_rule
     ensure_dialout
   fi
-  log_info "done. Mainboard: /dev/triaina (after replug). Next: docs/setup/klipper.md"
+  log_info "done. Next: docs/setup/klipper.md"
+  $WITH_UDEV && log_info "printer console: screen /dev/triaina 1500000 (after replug)"
+  return 0
 }
 
 main
