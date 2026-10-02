@@ -43,9 +43,24 @@ class PathsConfig:
 
 @dataclass
 class CutConfig:
+    #: Cap for every cutting F word, mm/min.
     max_feed: float = 1500.0
+    #: Feed used when a G-code file sets none, mm/min.
     default_feed: float = 1500.0
     z_threshold: float = 0.0
+    # Defaults for design jobs (SVG, DXF, PDF, AI, EPS, PNG, JPG). Each can be
+    # changed per job in the dashboard.
+    cut_feed: float = 1200.0
+    travel_feed: float = 3000.0
+    #: Blade tip offset, mm: 0.25 for a standard 45 degree Roland blade.
+    blade_offset: float = 0.25
+    #: Corners sharper than this get a swivel move, degrees.
+    cutoff_deg: float = 20.0
+    #: Closed shapes are cut this far past their start, mm.
+    overcut: float = 1.0
+    margin: float = 5.0
+    bed_x: float = 225.0
+    bed_y: float = 225.0
 
 
 @dataclass

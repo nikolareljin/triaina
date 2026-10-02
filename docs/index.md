@@ -15,7 +15,7 @@ files and switches modes.
 | [gcode_preprocessor.py](reference/gcode-preprocessor.md) | Turns Inkscape / Inkcut / LightBurn G-code into safe cutter G-code |
 | [mode_switch.py](reference/mode-switch.md) | Switches modes over Moonraker or OctoPrint |
 | [setup_pi.sh](reference/setup-pi.md) | Provisions the Pi: packages, venv, and the service |
-| [Dashboard](use/dashboard.md) | Service on the Pi: live status, mode switch, cut and print jobs |
+| [Dashboard](use/dashboard.md) | Service on the Pi: live status, mode switch, cut and print jobs; [cuts SVG, DXF, PDF, AI, EPS, PNG, JPG](use/designs.md) directly |
 
 ## Start here
 

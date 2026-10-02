@@ -15,6 +15,10 @@ dependencies = [
   "python-multipart>=0.0.9",
   # uvicorn alone answers websocket upgrades with "Unsupported upgrade request".
   "websockets>=12",
+  # Cut pipeline: SVG and DXF parsing, image thresholding.
+  "svgelements>=1.9",
+  "ezdxf>=1.1",
+  "pillow>=10",
 ]
 
 [project.optional-dependencies]
@@ -27,8 +31,8 @@ triaina = "triaina.__main__:main"
 Homepage = "https://nikolareljin.github.io/triaina/"
 Source = "https://github.com/nikolareljin/triaina"
 
-[tool.setuptools]
-packages = ["triaina", "triaina.web"]
+[tool.setuptools.packages.find]
+include = ["triaina*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "triaina.__version__" }

@@ -35,7 +35,7 @@ def test_page_and_health(env):
 
 def test_info_lists_kinds(env):
     info = env[2].get("/api/info").json()
-    assert set(info["kinds"]) == {"cut-gcode", "print-gcode"}
+    assert set(info["kinds"]) == {"cut-gcode", "cut-design", "print-gcode"}
     assert info["printer_url"] == "http://neptune4.local:7125"
 
 
@@ -291,3 +291,128 @@ def test_unknown_print_state_refuses_start(env, monkeypatch):
     r = client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True})
     assert r.status_code == 409 and "unknown" in r.json()["detail"]
     assert printer.uploads == []
+
+
+SVG_SQUARE = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="40mm" viewBox="0 0 40 40">'
+    '<rect x="0" y="0" width="40" height="40"/></svg>'
+)
+
+
+def wait_state(client, job_id, timeout=10):
+    import time as _t
+
+    deadline = _t.time() + timeout
+    while _t.time() < deadline:
+        job = client.get(f"/api/jobs/{job_id}").json()
+        if job["state"] != "converting":
+            return job
+        _t.sleep(0.05)
+    raise AssertionError("still converting")
+
+
+def test_cut_design_converts_in_background(env):
+    _, printer, client, _ = env
+    r = client.post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "60", "weed": "3"},
+        files={"file": ("logo.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 201 and r.json()["state"] == "converting"
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "ready", job["error"]
+    s = job["summary"]
+    assert s["width_mm"] == 66.0 and s["paths"] == 2  # design + weeding border
+    gcode = client.get(f"/api/jobs/{job['id']}/output").text
+    assert gcode.count("CUT_PLUNGE") == 2 and "CUTTER_MODE" in gcode
+    preview = client.get(f"/api/jobs/{job['id']}/preview.svg")
+    assert (
+        preview.headers["content-type"].startswith("image/svg+xml") and "<polyline" in preview.text
+    )
+
+
+def test_cut_design_too_big_fails_with_reason(env):
+    client = env[2]
+    r = client.post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "400"},
+        files={"file": ("big.svg", SVG_SQUARE)},
+    )
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "failed" and "bed allows" in job["error"]
+
+
+def test_cut_design_rejects_gcode_and_gcode_rejects_svg(env):
+    client = env[2]
+    assert upload(client, "cut-design", name="a.gcode").status_code == 415
+    assert upload(client, "cut-gcode", text=SVG_SQUARE, name="a.svg").status_code == 415
+
+
+def test_cut_design_option_range(env):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "blade_offset": "-1"},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 422
+
+
+def test_converting_job_cannot_start_or_be_discarded(env, monkeypatch):
+    import threading
+
+    gate = threading.Event()
+    from triaina.cut import pipeline
+
+    real = pipeline.run
+
+    def slow(*a, **k):
+        gate.wait(5)
+        return real(*a, **k)
+
+    monkeypatch.setattr(pipeline, "run", slow)
+    client = env[2]
+    job = client.post(
+        "/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)}
+    ).json()
+    assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 409
+    assert client.delete(f"/api/jobs/{job['id']}").status_code == 409
+    gate.set()
+    assert wait_state(client, job["id"])["state"] == "ready"
+
+
+def test_restart_fails_converting_jobs(tmp_path):
+    store = JobStore(tmp_path / "jobs.db")
+    job = store.create("cut-design", "a.svg")
+    store.update(job.id, state="converting")
+    assert store.recover() == 1 and store.get(job.id).state == "failed"
+
+
+def test_old_database_gets_summary_column(tmp_path):
+    import sqlite3
+
+    db = tmp_path / "jobs.db"
+    con = sqlite3.connect(db)
+    con.execute(
+        "CREATE TABLE jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL,"
+        " name TEXT NOT NULL, state TEXT NOT NULL, source TEXT NOT NULL DEFAULT '',"
+        " output TEXT NOT NULL DEFAULT '', remote_name TEXT NOT NULL DEFAULT '',"
+        " error TEXT NOT NULL DEFAULT '', created REAL NOT NULL, updated REAL NOT NULL)"
+    )
+    con.execute(
+        "INSERT INTO jobs (kind, name, state, created, updated)"
+        " VALUES ('print-gcode', 'a', 'done', 1, 1)"
+    )
+    con.commit()
+    con.close()
+    store = JobStore(db)
+    assert store.get(1).to_dict()["summary"] is None
+
+
+def test_blank_numeric_field_means_default(env):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "", "blade_offset": ""},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 201
+    assert wait_state(env[2], r.json()["id"])["summary"]["options"]["blade_offset"] == 0.25

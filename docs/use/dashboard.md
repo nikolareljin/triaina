@@ -30,11 +30,13 @@ the [triaina macros](../setup/klipper.md).
 
     | Type | Accepts | What happens |
     |---|---|---|
+    | Cut design | SVG, DXF, PDF, AI, EPS, PNG, JPG | Converted on the Pi with blade-offset compensation and a preview; see [Cutting a design file](designs.md) |
     | Cut G-code | G-code from Kiri:Moto, Inkcut, Inkscape, LightBurn | Run through the [preprocessor](../reference/gcode-preprocessor.md): heaters and extruder removed, knife macros added, feed capped |
     | Print G-code | Sliced G-code | Sent unchanged |
 
-    The job is now **ready**. Nothing has been sent to the printer. Download the
-    generated G-code from the job row to check it.
+    The job is now **ready** (a design is **converting** first). Nothing has
+    been sent to the printer. Check the preview and details, or download the
+    generated G-code from the job row.
 2. **Start**: confirm the physical setup shown in the dialog (knife holder
     fitted and hotend cold for a cut; holder removed for a print). The service
     cannot see the toolhead, so this is your check.
@@ -59,10 +61,11 @@ The dashboard is a client of the service's REST API. Interactive docs are at
 |---|---|---|
 | GET | `/api/status` | Printer snapshot |
 | GET | `/api/jobs` | Recent jobs |
-| POST | `/api/jobs` | Upload (`kind`, `file` as multipart) |
+| POST | `/api/jobs` | Upload: `kind`, `file`; design options `width`, `fit`, `weed`, `blade_offset`, `cut_feed`, `threshold`, `invert` (multipart) |
 | POST | `/api/jobs/{id}/start` | `{"confirm": true}` |
 | DELETE | `/api/jobs/{id}` | Discard a ready job |
 | GET | `/api/jobs/{id}/output` | Generated G-code |
+| GET | `/api/jobs/{id}/preview.svg` | Cut preview (design jobs) |
 | POST | `/api/mode/{cutter,printer}` | Mode switch |
 | POST | `/api/print/{pause,resume,cancel}` | Print control |
 | POST | `/api/estop` | Emergency stop |

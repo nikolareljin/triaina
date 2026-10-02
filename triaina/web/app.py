@@ -13,6 +13,7 @@ import logging
 import secrets
 import shutil
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -26,6 +27,10 @@ from starlette.websockets import WebSocketDisconnect
 
 from triaina import __version__
 from triaina.config import Config
+from triaina.convert import FORMATS, ConversionError
+from triaina.cut import pipeline as cut_pipeline
+from triaina.cut.paths import LayoutError
+from triaina.cut.pipeline import CutOptions
 from triaina.jobs import KINDS, JobStore, safe_name
 from triaina.monitor import Monitor
 from triaina.preprocess import Options, process_lines
@@ -36,6 +41,7 @@ log = logging.getLogger("triaina.web")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 GCODE_SUFFIXES = {".gcode", ".gco", ".g", ".nc", ".ngc", ".txt"}
+DESIGN_SUFFIXES = set(FORMATS)
 #: print_stats states in which starting a job or switching mode is safe.
 #: Anything else, including "unknown" when the state could not be read, is refused.
 IDLE_STATES = ("standby", "complete", "cancelled", "error")
@@ -75,6 +81,7 @@ def create_app(
         try:
             yield
         finally:
+            converter.shutdown(wait=False, cancel_futures=True)
             if start_monitor:
                 monitor.stop()
 
@@ -102,6 +109,9 @@ def create_app(
 
     auth = [Depends(require_token)]
     start_lock = threading.Lock()
+    # One conversion at a time: a Pi 3 has four cores and 1 GB.
+    converter = ThreadPoolExecutor(max_workers=1, thread_name_prefix="triaina-convert")
+    app.state.converter = converter
 
     # -- helpers -------------------------------------------------------------
 
@@ -166,17 +176,81 @@ def create_app(
 
     # -- jobs ----------------------------------------------------------------
 
+    def prepare_gcode(kind: str, source: Path, output: Path) -> None:
+        if kind == "cut-gcode":
+            lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
+            opts = Options(
+                max_feed=cfg.cut.max_feed,
+                default_feed=cfg.cut.default_feed,
+                z_threshold=cfg.cut.z_threshold,
+            )
+            output.write_text("\n".join(process_lines(lines, opts)) + "\n", encoding="utf-8")
+        else:
+            shutil.copyfile(source, output)
+
+    def convert_design(job_id: int, source: Path, output: Path, opts: CutOptions) -> None:
+        """Runs on the converter thread: a PDF or a traced photo takes seconds on a Pi 3."""
+        try:
+            result = cut_pipeline.run(source, output.parent / "work", opts)
+            output.write_text("\n".join(result.gcode) + "\n", encoding="utf-8")
+            (output.parent / "preview.svg").write_text(result.preview_svg, encoding="utf-8")
+            summary = dict(result.summary, warnings=result.warnings)
+            jobs.update(job_id, state="ready", summary=json.dumps(summary))
+        except (ConversionError, LayoutError, ValueError) as exc:
+            jobs.update(job_id, state="failed", error=str(exc))
+        except Exception as exc:  # noqa: BLE001 - a job must never stay "converting"
+            log.exception("converting job %s failed", job_id)
+            jobs.update(job_id, state="failed", error=f"conversion failed: {exc}")
+
     @app.post("/api/jobs", dependencies=auth, status_code=201)
-    def create_job(kind: str = Form(...), file: UploadFile = File(...)) -> dict:
+    def create_job(
+        kind: str = Form(...),
+        file: UploadFile = File(...),
+        width: Optional[float] = Form(None),
+        fit: bool = Form(False),
+        weed: float = Form(0.0),
+        blade_offset: Optional[float] = Form(None),
+        cut_feed: Optional[float] = Form(None),
+        threshold: int = Form(128),
+        invert: bool = Form(False),
+    ) -> dict:
         if kind not in KINDS:
             raise HTTPException(422, f"kind must be one of {sorted(KINDS)}")
-        name = safe_name(file.filename or "upload.gcode")
-        if Path(name).suffix.lower() not in GCODE_SUFFIXES:
-            raise HTTPException(415, f"expected G-code ({', '.join(sorted(GCODE_SUFFIXES))})")
+        name = safe_name(file.filename or "upload")
+        suffix = Path(name).suffix.lower()
+        allowed = DESIGN_SUFFIXES if kind == "cut-design" else GCODE_SUFFIXES
+        if suffix not in allowed:
+            raise HTTPException(415, f"{KINDS[kind]} takes {', '.join(sorted(allowed))}")
+        cut_opts = None
+        if kind == "cut-design":
+            cut_opts = CutOptions(
+                width=width or None,
+                fit=fit,
+                margin=cfg.cut.margin,
+                bed_x=cfg.cut.bed_x,
+                bed_y=cfg.cut.bed_y,
+                weed=weed,
+                blade_offset=cfg.cut.blade_offset if blade_offset is None else blade_offset,
+                cutoff_deg=cfg.cut.cutoff_deg,
+                overcut=cfg.cut.overcut,
+                cut_feed=cfg.cut.cut_feed if cut_feed is None else cut_feed,
+                travel_feed=cfg.cut.travel_feed,
+                max_feed=cfg.cut.max_feed,
+                threshold=threshold,
+                invert=invert,
+            )
+            bad = [
+                n
+                for n, v in (("weed", weed), ("blade_offset", cut_opts.blade_offset))
+                if not 0 <= v <= 20
+            ]
+            if not 0 < cut_opts.cut_feed or bad or not 0 <= threshold <= 255:
+                raise HTTPException(422, f"option out of range: {bad or 'cut_feed/threshold'}")
+
         job = jobs.create(kind, name)
         job_dir = data_dir / "jobs" / str(job.id)
         job_dir.mkdir(parents=True, exist_ok=True)
-        source = job_dir / f"source{Path(name).suffix.lower()}"
+        source = job_dir / f"source{suffix}"
         with source.open("wb") as out:
             copied = 0
             while chunk := file.file.read(1024 * 1024):
@@ -192,24 +266,26 @@ def create_app(
         # multipart upload carries the right name.
         remote = f"triaina-{job.id}-{Path(name).stem}.gcode"
         output = job_dir / remote
+        jobs.update(job.id, source=str(source), output=str(output), remote_name=remote)
+        if cut_opts is not None:
+            jobs.update(job.id, state="converting")
+            converter.submit(convert_design, job.id, source, output, cut_opts)
+            return jobs.get(job.id).to_dict()
         try:
-            if kind == "cut-gcode":
-                lines = source.read_text(encoding="utf-8", errors="replace").splitlines()
-                opts = Options(
-                    max_feed=cfg.cut.max_feed,
-                    default_feed=cfg.cut.default_feed,
-                    z_threshold=cfg.cut.z_threshold,
-                )
-                output.write_text("\n".join(process_lines(lines, opts)) + "\n", encoding="utf-8")
-            else:
-                shutil.copyfile(source, output)
+            prepare_gcode(kind, source, output)
         # Any failure must leave a failed job, never a ready one with no output.
         except Exception as exc:  # noqa: BLE001
             log.exception("preparing job %s failed", job.id)
             return jobs.update(job.id, state="failed", error=f"preparation failed: {exc}").to_dict()
-        return jobs.update(
-            job.id, source=str(source), output=str(output), remote_name=remote
-        ).to_dict()
+        return jobs.get(job.id).to_dict()
+
+    @app.get("/api/jobs/{job_id}/preview.svg", dependencies=auth)
+    def job_preview(job_id: int):
+        job = job_or_404(job_id)
+        preview_file = Path(job.output).parent / "preview.svg" if job.output else None
+        if preview_file is None or not preview_file.is_file():
+            raise HTTPException(404, "no preview for this job")
+        return FileResponse(preview_file, media_type="image/svg+xml")
 
     @app.post("/api/jobs/{job_id}/start", dependencies=auth)
     def start_job(job_id: int, body: StartRequest) -> dict:
@@ -242,6 +318,8 @@ def create_app(
         job = job_or_404(job_id)
         if job.state in ("sending", "running"):
             raise HTTPException(409, "cancel the print first")
+        if job.state == "converting":
+            raise HTTPException(409, "wait for the conversion to finish")
         if job.state == "ready":
             job = jobs.update(job.id, state="cancelled")
         return job.to_dict()

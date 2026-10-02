@@ -41,6 +41,10 @@ select { font: inherit; padding: 6px; margin-left: 6px; background: var(--bg); c
 .drop { border: 2px dashed var(--line); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; }
 .drop.over { border-color: var(--accent); }
 .drop input { display: none; }
+fieldset { border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
+fieldset input[type="number"] { width: 7em; margin-left: 6px; font: inherit; padding: 4px; background: var(--bg);
+  color: var(--ink); border: 1px solid var(--line); border-radius: 6px; }
+.warn { color: var(--warn); font-size: 13px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); }
 td.name { overflow-wrap: anywhere; }

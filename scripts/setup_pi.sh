@@ -27,6 +27,8 @@ INSTALL_DIR="/opt/triaina"
 CONFIG_FILE="/etc/triaina/config.toml"
 UNIT_FILE="/etc/systemd/system/triaina.service"
 APT_PACKAGES=(python3 python3-venv python3-pip usbutils curl)
+# Design conversion in the service: PDF/AI (pdftocairo), EPS (gs), PNG/JPG (potrace).
+SERVICE_APT_PACKAGES=(poppler-utils ghostscript potrace)
 
 # USB-serial bridges seen behind the Neptune 4 USB-C console port. Order
 # matters: first match wins. Pass --vid/--pid if lsusb shows something else.
@@ -104,9 +106,10 @@ fi
 CHECK_SUDO="$SUDO"
 $DRY_RUN && CHECK_SUDO=""
 
+# install_apt_packages PKG...: install the ones that are missing.
 install_apt_packages() {
   local missing=() pkg
-  for pkg in "${APT_PACKAGES[@]}"; do
+  for pkg in "$@"; do
     dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed" ||
       missing+=("$pkg")
   done
@@ -264,13 +267,14 @@ main() {
     log_error "setup_pi.sh targets Linux (Raspberry Pi OS); got $(uname -s)"
     exit 1
   fi
-  $SKIP_APT || install_apt_packages
+  $SKIP_APT || install_apt_packages "${APT_PACKAGES[@]}"
   setup_venv
   if $WITH_UDEV; then
     install_udev_rule
     ensure_dialout
   fi
   if $WITH_SERVICE; then
+    $SKIP_APT || install_apt_packages "${SERVICE_APT_PACKAGES[@]}"
     install_service
   fi
   log_info "done. Next: docs/setup/klipper.md"
