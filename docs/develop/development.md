@@ -46,4 +46,4 @@ presets at `@production`:
 | `pages.yml` | Builds this site on PRs, deploys from main |
 | `gitleaks.yml` | Secret scan on every push and PR |
 | `release-tag-gate.yml` | Blocks a release PR whose tag exists |
-| `release.yml` | Tags `X.Y.Z` on a merged `release/X.Y.Z` PR and attaches the archive |
+| `auto-tag.yml` | Tags `X.Y.Z` on a merged `release/X.Y.Z` PR (ci-helpers `auto-tag.yml`), then builds and attaches the archive (ci-helpers `release-build.yml`) |

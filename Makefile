@@ -40,7 +40,7 @@ dist: ## build dist/triaina-<tag>.tar.gz
 	rm -rf $(DIST) $(DIST).tar.gz
 	mkdir -p $(DIST)/scripts
 	cp -r config assets README.md LICENSE CHANGELOG.md requirements.txt $(DIST)/
-	cp scripts/*.py scripts/*.sh $(DIST)/scripts/
+	cp scripts/gcode_preprocessor.py scripts/mode_switch.py scripts/setup_pi.sh $(DIST)/scripts/
 	@if [ -f scripts/script-helpers/helpers.sh ]; then \
 		mkdir -p $(DIST)/scripts/script-helpers && \
 		cp -r scripts/script-helpers/helpers.sh scripts/script-helpers/lib scripts/script-helpers/LICENSE \
