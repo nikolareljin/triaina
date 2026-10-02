@@ -9,6 +9,13 @@ triaina turns an ELEGOO Neptune 4 into a two-in-one machine: a normal FDM
 printer and a drag-knife vinyl cutter. A Raspberry Pi 3 Model B prepares cut
 files and switches modes.
 
+!!! info "Why 'triaina'?"
+    *Triaina* is Greek for **trident**, Poseidon's three-pronged spear. The printer
+    is a **Neptune** 4, and Neptune is simply Poseidon under the name the Romans
+    gave him when they adopted him. This project gives the Neptune its original
+    Greek trident back, with three prongs: print, cut, and the Pi that picks
+    which. [The whole story](name.md).
+
 !!! tip "Sibling project: kinect-forge"
     triaina makes the object. [kinect-forge](https://nikolareljin.github.io/kinect-forge/)
     makes the model: it turns a Kinect v1 into a 3D scanner that exports meshes.
