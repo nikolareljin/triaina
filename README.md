@@ -10,6 +10,20 @@ cutter, with a Raspberry Pi 3 Model B as the companion host.
 **Full documentation: https://nikolareljin.github.io/triaina/** (wiring
 diagrams, parts list with store links, setup and calibration).
 
+## Why "triaina"?
+
+*Triaina* (Greek *τρίαινα*, "TREE-eh-nah") is Greek for **trident**, the
+three-pronged spear of Poseidon, god of the sea.
+
+The printer is an ELEGOO **Neptune** 4. Neptune is Poseidon after the Romans
+adopted him: same sea, same beard, same trident, new name tag. So the Neptune 4
+is named after the Roman edition of a Greek god, and this project gives it the
+original Greek spear back.
+
+Three prongs, three jobs: **print**, **cut**, and the **Raspberry Pi** that
+decides which of the two is on duty. The longer version, with a table:
+https://nikolareljin.github.io/triaina/name/
+
 ## What is in the box
 
 | Path | What |
