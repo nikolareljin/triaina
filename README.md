@@ -53,7 +53,7 @@ On the Pi:
 git clone --recursive https://github.com/nikolareljin/triaina.git
 cd triaina
 scripts/setup_pi.sh
-export TRIAINA_HOST=neptune4.local
+export TRIAINA_HOST=mkspi.local
 ```
 
 Upload `config/klipper_cutter_macros.cfg` next to `printer.cfg` (Fluidd >
@@ -71,7 +71,7 @@ Save & Restart. Then measure and set `offset_x`, `offset_y`, `offset_z`,
 
 ```bash
 scripts/setup_pi.sh --service            # installs, enables, starts; re-run to update
-sudo nano /etc/triaina/config.toml       # [printer] host = "neptune4.local"
+sudo nano /etc/triaina/config.toml       # [printer] host = "mkspi.local"
 sudo systemctl restart triaina
 ```
 

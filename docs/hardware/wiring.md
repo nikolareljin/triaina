@@ -45,15 +45,17 @@ set up over a wired connection first. Wired is simpler and does not drop.
    name `triaina`, user, Wi-Fi and SSH in the Imager settings.
 2. Connect the switch (3, 8), then the Pi (4) and the printer (5).
 3. Power the Pi (1-2). It appears as `triaina.local` after about a minute.
-4. Power the printer (7). Read its IP address on its screen or in your
-   router's client list.
+4. Power the printer (7). Read its IP address on its screen (network
+   settings) or in your router's client list. Its host name is `mkspi` (the
+   board is an MKS-PI), so `mkspi.local` may also work; the IP always does.
+   A DHCP reservation in the router keeps the address from changing.
 5. From the Pi, check you can reach Moonraker:
 
     ```bash
-    curl -s http://neptune4.local:7125/server/info | head -c 300
+    curl -s http://mkspi.local:7125/server/info | head -c 300
     ```
 
-    Replace `neptune4.local` with your printer's name or address.
+    Replace `mkspi.local` with your printer's name or address.
 6. Continue with [Raspberry Pi setup](../setup/pi.md).
 
 ## Optional: USB-C console cable
