@@ -12,9 +12,11 @@ import json
 import logging
 import secrets
 import shutil
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket
 from fastapi.responses import FileResponse
@@ -35,6 +37,12 @@ STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 GCODE_SUFFIXES = {".gcode", ".gco", ".g", ".nc", ".ngc", ".txt"}
 BUSY_STATES = ("printing", "paused")
+
+
+def fluidd_url(host: str) -> str:
+    """Fluidd runs on port 80 of the printer, whatever port Moonraker uses."""
+    hostname = urlparse(host if "://" in host else f"http://{host}").hostname or host
+    return f"http://{hostname}/"
 
 
 class StartRequest(BaseModel):
@@ -91,14 +99,16 @@ def create_app(
             raise HTTPException(401, "missing or wrong token")
 
     auth = [Depends(require_token)]
+    start_lock = threading.Lock()
 
     # -- helpers -------------------------------------------------------------
 
     def printer_idle() -> None:
-        """Raise 409 unless the printer is online and not running a job."""
-        _, snap = monitor.snapshot()
-        if not snap.get("online"):
-            snap = monitor.poll_once()
+        """Raise 409 unless the printer is online and not running a job.
+
+        Polls now rather than trusting the last snapshot: a print started from
+        Fluidd a moment ago must not be missed."""
+        snap = monitor.poll_once()
         if not snap.get("online"):
             raise HTTPException(503, f"printer offline: {snap.get('error')}")
         if snap.get("klippy") not in (None, "ready"):
@@ -127,8 +137,7 @@ def create_app(
         return {
             "version": __version__,
             "printer_url": cfg.printer_url,
-            "printer_web_url": cfg.printer.web_url
-            or f"http://{cfg.printer.host.split('://')[-1]}/",
+            "printer_web_url": cfg.printer.web_url or fluidd_url(cfg.printer.host),
             "camera_url": cfg.camera.stream_url or None,
             "config_file": str(cfg.source) if cfg.source else None,
             "kinds": KINDS,
@@ -205,10 +214,14 @@ def create_app(
             raise HTTPException(409, f"job is {job.state}")
         if not body.confirm:
             raise HTTPException(428, "confirm the physical setup first")
-        if jobs.active():
-            raise HTTPException(409, "another job is active")
-        printer_idle()
-        jobs.update(job.id, state="sending")
+        # Check and claim under one lock: two clicks must not both start.
+        with start_lock:
+            if jobs.get(job.id).state != "ready":
+                raise HTTPException(409, "job already started")
+            if jobs.active():
+                raise HTTPException(409, "another job is active")
+            printer_idle()
+            jobs.update(job.id, state="sending")
         try:
             client.upload(Path(job.output), start=True)
         except (ApiError, OSError) as exc:

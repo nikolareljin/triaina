@@ -197,3 +197,46 @@ def test_lifespan_starts_and_stops_monitor(tmp_path):
         assert client.get("/api/status").json()["online"] is True
         assert monitor._thread.is_alive()
     assert not monitor._thread.is_alive()
+
+
+def test_fluidd_url_drops_moonraker_port():
+    from triaina.web.app import fluidd_url
+
+    assert fluidd_url("neptune4.local") == "http://neptune4.local/"
+    assert fluidd_url("http://198.51.100.7:7125") == "http://198.51.100.7/"
+
+
+def test_concurrent_starts_send_once(env):
+    import threading
+    import time as _time
+
+    _, printer, client, _ = env
+    job = upload(client, "print-gcode").json()
+    real_upload = printer.upload
+
+    def slow_upload(path, start):
+        _time.sleep(0.2)
+        real_upload(path, start)
+
+    printer.upload = slow_upload
+    codes = []
+
+    def go():
+        codes.append(
+            client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code
+        )
+
+    threads = [threading.Thread(target=go) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert sorted(codes) == [200, 409, 409]
+    assert len(printer.uploads) == 1
+
+
+def test_start_sees_print_started_elsewhere(env):
+    _, printer, client, _ = env
+    job = upload(client, "print-gcode").json()
+    printer.state = "printing"  # started from Fluidd after the last poll
+    assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 409
