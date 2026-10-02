@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" font-family="Helvetica, Arial, sans-serif" font-size="12">
+  <title>USB-A plug pinout with pin 1 (VBUS, 5 V) covered by Kapton tape</title>
+  <rect width="560" height="300" fill="#0f172a"/>
+  <text x="20" y="30" font-size="14" fill="#f8fafc">USB-A plug, contacts facing you (one orientation)</text>
+  <!-- shell -->
+  <rect x="80" y="70" width="400" height="120" rx="6" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>
+  <rect x="100" y="90" width="360" height="45" fill="#1e293b"/>
+  <!-- contacts 1..4 left to right as seen facing plug with tongue on top -->
+  <rect x="130" y="135" width="50" height="40" fill="#fbbf24"/>
+  <rect x="215" y="140" width="45" height="35" fill="#fbbf24"/>
+  <rect x="300" y="140" width="45" height="35" fill="#fbbf24"/>
+  <rect x="380" y="135" width="50" height="40" fill="#fbbf24"/>
+  <!-- kapton over pin 1 -->
+  <rect x="122" y="128" width="66" height="54" fill="#f59e0b" opacity="0.55" stroke="#b45309" stroke-dasharray="4 3"/>
+  <g fill="#e2e8f0" text-anchor="middle">
+    <text x="155" y="215">1</text><text x="237" y="215">2</text><text x="322" y="215">3</text><text x="405" y="215">4</text>
+    <text x="155" y="232" fill="#f87171">VBUS +5 V</text><text x="237" y="232">D-</text><text x="322" y="232">D+</text><text x="405" y="232">GND</text>
+    <text x="155" y="250" fill="#f59e0b">TAPED</text><text x="237" y="250">data</text><text x="322" y="250">data</text><text x="405" y="250">keep</text>
+  </g>
+  <text x="20" y="282" fill="#e2e8f0">Pins 1 and 4 are the long outer contacts. Find VBUS with a multimeter, tape only that one.</text>
+</svg>

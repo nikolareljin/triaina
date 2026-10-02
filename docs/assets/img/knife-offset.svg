@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <title>Top view: knife tip left of and in front of the nozzle; offset_x and offset_y</title>
+  <rect width="560" height="380" fill="#0f172a"/>
+  <text x="20" y="30" font-size="15" fill="#f8fafc">Top view of the toolhead (back of the machine at the top)</text>
+  <rect x="260" y="80" width="160" height="200" rx="10" fill="#1e293b" stroke="#94a3b8"/>
+  <circle cx="340" cy="180" r="9" fill="#fbbf24"/>
+  <text x="340" y="210" fill="#fbbf24" text-anchor="middle">nozzle</text>
+  <rect x="200" y="190" width="60" height="30" fill="#0284c7"/>
+  <circle cx="180" cy="205" r="18" fill="#cbd5e1" stroke="#38bdf8" stroke-width="2"/>
+  <circle cx="180" cy="205" r="4" fill="#38bdf8"/>
+  <text x="180" y="245" fill="#38bdf8" text-anchor="middle">knife tip</text>
+  <g stroke="#38bdf8" stroke-width="1.5" fill="none">
+    <path d="M180 290 V310 M340 290 V310 M180 302 H340"/>
+    <path d="M100 180 H120 M100 205 H120 M108 180 V205"/>
+  </g>
+  <text x="260" y="330" fill="#38bdf8" text-anchor="middle">offset_x = nozzle X - knife X = +32</text>
+  <text x="20" y="190" fill="#38bdf8">offset_y</text>
+  <text x="20" y="206" fill="#38bdf8">= +5 here</text>
+  <text x="20" y="360" fill="#94a3b8">Knife 32 mm left and 5 mm in front of the nozzle gives X=32 Y=5. The shipped default Y=-5 is for a knife 5 mm behind.</text>
+  <g stroke="#64748b" stroke-width="1.5"><path d="M480 300 H530 M480 300 V250"/></g>
+  <text x="534" y="304" fill="#64748b">+X</text>
+  <text x="470" y="244" fill="#64748b">+Y</text>
+</svg>

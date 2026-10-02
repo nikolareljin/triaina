@@ -1,0 +1,5 @@
+# Runtime scripts use only the Python standard library.
+# These are the test and lint tools used by make and CI.
+pytest>=8.0
+black>=24.0
+flake8>=7.0

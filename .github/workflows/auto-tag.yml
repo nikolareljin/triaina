@@ -1,0 +1,48 @@
+name: Auto Tag
+
+# Creates the version tag when a release/X.Y.Z pull request merges to main, then
+# publishes the GitHub release with the dist archive attached.
+#
+# auto-tag.yml, not auto-tag-release.yml: the latter declares actions: write for
+# its dispatch job, which this repository does not need.
+#
+# update_production_tag stays false: triaina is an end-user toolkit, not a
+# shared library pinned at @production.
+#
+# The tag is unprefixed (0.1.0, not v0.1.0), matching check_release_tag.sh.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  tag:
+    uses: nikolareljin/ci-helpers/.github/workflows/auto-tag.yml@production
+    with:
+      update_production_tag: false
+
+  # Chained off the tag job: a tag pushed with GITHUB_TOKEN does not fire an
+  # `on: push: tags:` trigger. `version` is empty for an ordinary push to main.
+  release:
+    needs: tag
+    if: ${{ needs.tag.outputs.version != '' }}
+    permissions:
+      contents: write
+    uses: nikolareljin/ci-helpers/.github/workflows/release-build.yml@production
+    with:
+      python_version: "3.11"
+      test_command: "python -m pip install -r requirements.txt && python -m pytest"
+      # The preset's checkout does not fetch submodules; the archive bundles
+      # script-helpers' loader so setup_pi.sh works from an unpacked release.
+      build_command: >-
+        git submodule update --init --recursive &&
+        make dist TAG=${{ needs.tag.outputs.version }}
+      artifact_paths: dist/triaina-${{ needs.tag.outputs.version }}.tar.gz
+      release_tag: ${{ needs.tag.outputs.version }}
+      release_name: triaina ${{ needs.tag.outputs.version }}
+      generate_release_notes: true
+      timeout_minutes: 15

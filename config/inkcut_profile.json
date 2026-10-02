@@ -1,0 +1,30 @@
+{
+  "_comment": "Reference device settings for Inkcut. Inkcut has no stable import format; enter these values in Device > Edit. See docs/use/inkcut.md.",
+  "name": "triaina Neptune 4 drag knife",
+  "connection": {
+    "transport": "serial",
+    "port": "/dev/triaina",
+    "baudrate": 250000
+  },
+  "protocol": "gcode",
+  "units": "mm",
+  "area": {
+    "width_mm": 225,
+    "height_mm": 225
+  },
+  "blade": {
+    "angle_deg": 45,
+    "offset_mm": 0.25,
+    "cutoff_deg": 20
+  },
+  "speeds": {
+    "cut_feed_mm_min": 1500,
+    "travel_feed_mm_min": 3000
+  },
+  "gcode": {
+    "header": "G21\nG90\nG28\nCUTTER_MODE\nCUT_RETRACT",
+    "footer": "CUT_RETRACT\nPRINTER_MODE",
+    "plunge": "CUT_PLUNGE",
+    "retract": "CUT_RETRACT"
+  }
+}

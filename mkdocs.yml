@@ -1,0 +1,95 @@
+site_name: triaina
+site_description: >-
+  Run an ELEGOO Neptune 4 as both an FDM printer and a drag-knife vinyl cutter,
+  driven from a Raspberry Pi 3 Model B.
+site_url: https://nikolareljin.github.io/triaina/
+repo_url: https://github.com/nikolareljin/triaina
+repo_name: nikolareljin/triaina
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  # No Google Fonts: the site should not make a third-party request for text.
+  font: false
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/nikolareljin/triaina
+      name: triaina on GitHub
+
+nav:
+  - Home: index.md
+  - Hardware:
+      - Parts and where to buy: hardware/parts.md
+      - System overview: hardware/overview.md
+      - Wiring the Raspberry Pi: hardware/wiring.md
+      - Mounting the knife: hardware/knife-mount.md
+  - Setup:
+      - Raspberry Pi: setup/pi.md
+      - Klipper macros: setup/klipper.md
+      - Calibrating the knife: setup/calibration.md
+  - Use:
+      - Cutting a sticker: use/workflow.md
+      - Switching modes: use/mode-switching.md
+      - Inkcut: use/inkcut.md
+      - Safety: use/safety.md
+      - Troubleshooting: use/troubleshooting.md
+  - Reference:
+      - Klipper macros: reference/klipper-macros.md
+      - gcode_preprocessor.py: reference/gcode-preprocessor.md
+      - mode_switch.py: reference/mode-switch.md
+      - setup_pi.sh: reference/setup-pi.md
+      - Inkcut profile: reference/inkcut-profile.md
+  - Develop:
+      - Development: develop/development.md
+      - Releasing: develop/releasing.md

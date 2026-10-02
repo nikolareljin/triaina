@@ -1,0 +1,31 @@
+name: Secret Scan
+
+# Secrets in a public repository are public the moment they land, and deleting
+# the commit does not un-publish them. This runs on every push and pull request
+# and fails the build on a finding rather than filing a report nobody reads.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Gitleaks scans history; a shallow checkout hides the commits that
+          # matter most, the ones someone tried to bury.
+          fetch-depth: 0
+
+      - name: Gitleaks scan
+        uses: nikolareljin/ci-helpers/.github/actions/gitleaks-scan@production
+        with:
+          fail_on_findings: "true"
+          upload_artifact: "true"
