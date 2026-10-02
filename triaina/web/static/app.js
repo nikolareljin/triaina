@@ -68,6 +68,7 @@ function renderJobs(jobs) {
   for (const j of jobs) {
     const tr = document.createElement("tr");
     const cells = [j.id, j.name, j.kind_label];
+    const fmtTime = (s) => (s >= 60 ? `${Math.round(s / 60)} min` : `${s} s`);
     for (const c of cells) {
       const td = document.createElement("td");
       td.textContent = c;
@@ -78,18 +79,45 @@ function renderJobs(jobs) {
     st.textContent = j.state + (j.error ? `: ${j.error}` : "");
     st.className = `state-${j.state}`;
     tr.append(st);
+    const det = document.createElement("td");
+    if (j.summary) {
+      const s = j.summary;
+      // Design jobs have all fields; cut G-code jobs only size and warnings.
+      const parts = [];
+      if (s.width_mm != null) parts.push(`${s.width_mm} x ${s.height_mm} mm`);
+      if (s.paths != null) parts.push(`${s.paths} paths`);
+      if (s.estimate_s != null) parts.push(`~${fmtTime(s.estimate_s)}`);
+      det.append(parts.join(", "));
+      for (const w of s.warnings || []) {
+        const p = document.createElement("div");
+        p.className = "warn";
+        p.textContent = w;
+        det.append(p);
+      }
+    }
+    tr.append(det);
     const act = document.createElement("td");
     if (j.state === "ready") {
       const go = document.createElement("button");
       go.textContent = "Start";
       go.className = "primary";
       go.onclick = () => confirmStart(j);
-      const drop = document.createElement("button");
-      drop.textContent = "Discard";
-      drop.onclick = () => api("DELETE", `api/jobs/${j.id}`).catch((e) => toast(e.message));
-      act.append(go, " ", drop);
+      act.append(go, " ");
     }
-    if (j.has_output) {
+    if (!["converting", "sending", "running"].includes(j.state) && j.has_output) {
+      const drop = document.createElement("button");
+      drop.textContent = j.state === "ready" ? "Discard" : "Delete files";
+      drop.onclick = () => api("DELETE", `api/jobs/${j.id}`).catch((e) => toast(e.message));
+      act.append(drop);
+    }
+    if (j.summary && j.has_output && j.state !== "failed") {
+      const pv = document.createElement("a");
+      pv.href = `api/jobs/${j.id}/preview.svg${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+      pv.target = "_blank";
+      pv.textContent = "Preview";
+      act.append(" ", pv);
+    }
+    if (j.has_output && j.state !== "converting") {
       const a = document.createElement("a");
       a.href = `api/jobs/${j.id}/output${token ? `?token=${encodeURIComponent(token)}` : ""}`;
       a.textContent = "G-code";
@@ -135,7 +163,30 @@ $("estop").onclick = () => {
 
 const drop = $("drop");
 const input = $("fileinput");
-input.onchange = () => { $("dropText").textContent = input.files[0]?.name || "Drop a G-code file"; };
+const HELP = {
+  "cut-design": "SVG, DXF, PDF, AI, EPS, PNG or JPG. Converted here with blade-offset compensation; check the preview before starting.",
+  "cut-gcode": "G-code from Kiri:Moto, Inkcut, Inkscape or LightBurn, made safe by the preprocessor: heaters off, knife macros, feed cap.",
+  "print-gcode": "Sliced G-code for a normal print, sent unchanged. Remove the knife holder first.",
+};
+const ACCEPT = {
+  "cut-design": ".svg,.dxf,.pdf,.ai,.eps,.png,.jpg,.jpeg",
+  "cut-gcode": ".gcode,.gco,.g,.nc,.ngc,.txt",
+  "print-gcode": ".gcode,.gco,.g",
+};
+function kindChanged() {
+  const k = $("kind").value;
+  $("designOpts").hidden = k !== "cut-design";
+  $("kindHelp").textContent = HELP[k] || "";
+  input.accept = ACCEPT[k] || "";
+  const name = input.files[0]?.name || "";
+  const isImage = /\.(png|jpe?g)$/i.test(name);
+  $("rasterOpts").hidden = !isImage;
+  document.querySelector('[name="width"]').placeholder = isImage ? "required" : "file size";
+}
+input.onchange = () => {
+  $("dropText").textContent = input.files[0]?.name || "Drop a file or click to choose";
+  kindChanged();
+};
 drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
 drop.ondragleave = () => drop.classList.remove("over");
 drop.ondrop = (e) => {
@@ -147,10 +198,17 @@ drop.ondrop = (e) => {
 $("upload").onsubmit = async (e) => {
   e.preventDefault();
   try {
-    const job = await api("POST", "api/jobs", new FormData(e.target));
-    toast(job.state === "failed" ? `Failed: ${job.error}` : `Job #${job.id} ready`);
+    const form = new FormData(e.target);
+    // Blank fields mean "use the configured default": send nothing for them.
+    for (const [k, v] of [...form.entries()]) if (v === "") form.delete(k);
+    const job = await api("POST", "api/jobs", form);
+    const what = { failed: `Failed: ${job.error}`, converting: `Job #${job.id} converting...` };
+    toast(what[job.state] || `Job #${job.id} ready`);
+    const kind = $("kind").value;
     e.target.reset();
-    $("dropText").textContent = "Drop a G-code file or click to choose";
+    $("kind").value = kind;
+    $("dropText").textContent = "Drop a file or click to choose";
+    kindChanged();
   } catch (err) { toast(err.message); }
 };
 
@@ -182,6 +240,9 @@ api("GET", "api/info").then((info) => {
   $("fluidd").href = info.printer_web_url;
   const kind = $("kind");
   for (const [value, label] of Object.entries(info.kinds)) kind.append(new Option(label, value));
+  kind.value = "cut-design";
+  kind.onchange = kindChanged;
+  kindChanged();
   if (info.camera_url) {
     $("camera").src = info.camera_url;
     $("camera-card").hidden = false;

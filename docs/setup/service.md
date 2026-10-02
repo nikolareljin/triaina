@@ -29,7 +29,7 @@ existing config file.
 |---|---|
 | Code and venv | `/opt/triaina/.venv` |
 | Config | `/etc/triaina/config.toml` (from [`deploy/config.example.toml`](https://github.com/nikolareljin/triaina/blob/main/deploy/config.example.toml)) |
-| Jobs database, uploads, generated G-code | `/var/lib/triaina` |
+| Jobs database, uploads, generated G-code and previews | `/var/lib/triaina` |
 | Unit | `/etc/systemd/system/triaina.service` (from [`deploy/triaina.service`](https://github.com/nikolareljin/triaina/blob/main/deploy/triaina.service)) |
 | Runs as | system user `triaina`, no login shell |
 | Logs | `journalctl -u triaina -f` |
@@ -46,7 +46,10 @@ existing config file.
 | | `port` | `8080` | Dashboard port |
 | | `auth_token` | none | Require a token; see below |
 | `[paths]` | `data_dir` | `/var/lib/triaina` | Jobs and files |
-| `[cut]` | `max_feed`, `default_feed`, `z_threshold` | `1500`, `1500`, `0` | Preprocessor settings for cut jobs |
+| `[cut]` | `max_feed`, `default_feed`, `z_threshold` | `1500`, `1500`, `0` | Preprocessor settings; `max_feed` also caps design cuts |
+| | `cut_feed`, `travel_feed` | `1200`, `3000` | Design jobs: cutting and travel speed, mm/min |
+| | `blade_offset`, `cutoff_deg`, `overcut` | `0.25`, `20`, `1.0` | Blade-offset compensation |
+| | `margin`, `bed_x`, `bed_y` | `5`, `225`, `225` | Usable area for designs, mm |
 | `[camera]` | `stream_url` | none | MJPEG stream shown on the dashboard |
 
 An unknown key or section stops the service with a clear error in the journal
@@ -69,7 +72,7 @@ home network.
 |---|---|
 | Pi reboots | Service starts after the network is up; the dashboard is back within about a minute |
 | Service crashes | systemd restarts it after 5 s |
-| A job was being uploaded | Marked failed ("interrupted by a service restart"); start it again |
+| A job was being uploaded or converted | Marked failed ("interrupted by a service restart"); upload or start it again |
 | A job was running on the printer | Keeps running on the printer; the dashboard picks it up again from Moonraker |
 | Printer offline | Dashboard shows "offline" and keeps polling; nothing is sent |
 | Klipper restarts mid-job | The job is marked failed after 15 s ("printer restarted during the job") |

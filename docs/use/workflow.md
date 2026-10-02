@@ -7,6 +7,11 @@
 3. Remove overlaps: **Path > Union** for touching letters.
 4. Add a weeding border: a rectangle 5 mm larger than the design.
 
+!!! tip "Easier: the dashboard"
+    With the [dashboard service](../setup/service.md) installed, drop the SVG,
+    DXF, PDF or PNG on the dashboard as a **Cut design** job and skip steps 2-5.
+    See [Cutting a design file](designs.md).
+
 ## 2. Generate G-code
 
 Drag knives need blade-offset compensation: the tip trails the holder axis by

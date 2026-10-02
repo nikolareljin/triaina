@@ -79,8 +79,18 @@ def make_handler(state: State):
                         "display_status": {"progress": 0.0, "message": None},
                         "extruder": {"temperature": 24.6, "target": 0.0},
                         "heater_bed": {"temperature": 23.9, "target": 0.0},
-                        "toolhead": {"homed_axes": "xyz", "position": [0, 0, 3, 0]},
-                        "gcode_macro _TRIAINA_VARS": {"mode": state.mode, "blade_down": False},
+                        "toolhead": {
+                            "homed_axes": "xyz",
+                            "position": [0, 0, 3, 0],
+                            "axis_minimum": [-2, -3, -2, 0],
+                            "axis_maximum": [235, 230, 265, 0],
+                        },
+                        "gcode_macro _TRIAINA_VARS": {
+                            "mode": state.mode,
+                            "blade_down": False,
+                            "offset_x": 32.0,
+                            "offset_y": -5.0,
+                        },
                     }
                 wanted = parse_qs(url.query, keep_blank_values=True)
                 self.reply(

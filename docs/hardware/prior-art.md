@@ -25,6 +25,7 @@ could find, so these are triaina's own:
 |---|---|
 | [Klipper macros](../reference/klipper-macros.md) | Mode switch with heaters off, saved and restored limits, knife offset, plunge refused outside cutter mode |
 | [gcode_preprocessor.py](../reference/gcode-preprocessor.md) | Makes any generator's output safe for this machine: strips heaters and extruder, maps Z and `M3`/`M5` to the macros, caps feed |
+| [Design conversion](../use/designs.md) | SVG, DXF, PDF, AI, EPS, PNG, JPG to cut G-code on the Pi, with blade-offset compensation (method as in Inkcut / psol/drag_knife), containment-aware cut order and a preview. Parsing reuses svgelements, ezdxf, poppler, ghostscript and potrace |
 | [mode_switch.py](../reference/mode-switch.md) | One command to switch modes and upload or start a job from the Pi |
 | [setup_pi.sh](../reference/setup-pi.md) | Idempotent Pi provisioning |
 | [Knife mount](knife-mount.md) | No Neptune 4 drag-knife mount is published; remix a generic holder clamp |

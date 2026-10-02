@@ -174,3 +174,17 @@ class TestCli:
         src = tmp_path / "a.gcode"
         src.write_text("G1 X1\n")
         assert main([str(src), "--max-feed", "0"]) == 2
+
+
+class TestExtents:
+    def test_absolute(self):
+        from triaina.preprocess import xy_extents
+
+        assert xy_extents(["G90", "G0 X10 Y5", "G1 X20", "G1 Y30", "CUT_PLUNGE"]) == (10, 5, 20, 30)
+
+    def test_none_and_relative(self):
+        from triaina.preprocess import xy_extents
+
+        assert xy_extents(["G28", "M5"]) is None
+        with pytest.raises(ValueError, match="G91"):
+            xy_extents(["G91", "G1 X1 Y1"])

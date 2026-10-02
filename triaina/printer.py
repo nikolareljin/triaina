@@ -148,8 +148,8 @@ class MoonrakerClient(Client):
         "display_status": "progress,message",
         "extruder": "temperature,target",
         "heater_bed": "temperature,target",
-        "toolhead": "homed_axes,position",
-        "gcode_macro _TRIAINA_VARS": "mode,blade_down",
+        "toolhead": "homed_axes,position,axis_minimum,axis_maximum",
+        "gcode_macro _TRIAINA_VARS": "mode,blade_down,offset_x,offset_y",
     }
 
     def snapshot(self) -> dict:
@@ -171,6 +171,15 @@ class MoonrakerClient(Client):
             "extruder": st.get("extruder", {}),
             "heater_bed": st.get("heater_bed", {}),
             "homed_axes": st.get("toolhead", {}).get("homed_axes", ""),
+            # Axis limits [x, y, z, e] and knife offset: the service derives the
+            # area the knife can reach without the nozzle leaving its range.
+            "axis_minimum": st.get("toolhead", {}).get("axis_minimum"),
+            "axis_maximum": st.get("toolhead", {}).get("axis_maximum"),
+            "knife_offset": (
+                [macro.get("offset_x"), macro.get("offset_y")]
+                if macro and macro.get("offset_x") is not None
+                else None
+            ),
             "mode": macro.get("mode") if macro else None,
             "blade_down": macro.get("blade_down") if macro else None,
         }

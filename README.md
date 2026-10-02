@@ -76,7 +76,8 @@ sudo systemctl restart triaina
 ```
 
 Open `http://triaina.local:8080/`. It starts on boot and restarts on failure.
-Upload cut or print G-code, confirm the physical setup, start, and watch it.
+Drop a design (SVG, DXF, PDF, AI, EPS, PNG, JPG) or G-code, check the preview,
+confirm the physical setup, start, and watch it.
 See [Dashboard service](https://nikolareljin.github.io/triaina/setup/service/).
 
 ## Cutting a sticker

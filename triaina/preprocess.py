@@ -264,6 +264,40 @@ def process_lines(lines: Iterable[str], opts: Optional[Options] = None) -> list[
     return out
 
 
+def xy_extents(lines: Iterable[str]) -> Optional[tuple[float, float, float, float]]:
+    """(min_x, min_y, max_x, max_y) of G0/G1 targets, or None if there are none.
+
+    Assumes absolute positioning; raises ValueError on G91 (relative), where
+    the extents cannot be known without simulating the whole file.
+    """
+    x = y = None
+    xs: list[float] = []
+    ys: list[float] = []
+    for raw in lines:
+        code, _ = split_comment(raw)
+        words = [(m.group(1).upper(), float(m.group(2))) for m in _WORD.finditer(code)]
+        if not words or not re.match(r"[A-Za-z]\s*[-+.\d]", code):
+            continue
+        letter, number = words[0]
+        if letter == "G" and int(number) == 91:
+            raise ValueError("relative positioning (G91): reach cannot be checked")
+        if letter == "G" and int(number) not in (0, 1):
+            continue
+        if letter not in "GXY":
+            continue
+        for w, v in words:
+            if w == "X":
+                x = v
+            elif w == "Y":
+                y = v
+        if x is not None and y is not None and any(w in "XY" for w, _ in words):
+            xs.append(x)
+            ys.append(y)
+    if not xs:
+        return None
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gcode_preprocessor.py",

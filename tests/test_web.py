@@ -22,7 +22,7 @@ def env(tmp_path):
     return cfg, printer, client, app
 
 
-def upload(client, kind, text="G1 X1 Y1 F600\n", name="job.gcode", **kw):
+def upload(client, kind, text="G1 X10 Y10 F600\n", name="job.gcode", **kw):
     return client.post("/api/jobs", data={"kind": kind}, files={"file": (name, text)}, **kw)
 
 
@@ -35,7 +35,7 @@ def test_page_and_health(env):
 
 def test_info_lists_kinds(env):
     info = env[2].get("/api/info").json()
-    assert set(info["kinds"]) == {"cut-gcode", "print-gcode"}
+    assert set(info["kinds"]) == {"cut-gcode", "cut-design", "print-gcode"}
     assert info["printer_url"] == "http://neptune4.local:7125"
 
 
@@ -291,3 +291,228 @@ def test_unknown_print_state_refuses_start(env, monkeypatch):
     r = client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True})
     assert r.status_code == 409 and "unknown" in r.json()["detail"]
     assert printer.uploads == []
+
+
+SVG_SQUARE = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="40mm" height="40mm" viewBox="0 0 40 40">'
+    '<rect x="0" y="0" width="40" height="40"/></svg>'
+)
+
+
+def wait_state(client, job_id, timeout=10):
+    import time as _t
+
+    deadline = _t.time() + timeout
+    while _t.time() < deadline:
+        job = client.get(f"/api/jobs/{job_id}").json()
+        if job["state"] != "converting":
+            return job
+        _t.sleep(0.05)
+    raise AssertionError("still converting")
+
+
+def test_cut_design_converts_in_background(env):
+    _, printer, client, _ = env
+    r = client.post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "60", "weed": "3"},
+        files={"file": ("logo.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 201 and r.json()["state"] == "converting"
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "ready", job["error"]
+    s = job["summary"]
+    assert s["width_mm"] == 66.0 and s["paths"] == 2  # design + weeding border
+    gcode = client.get(f"/api/jobs/{job['id']}/output").text
+    assert gcode.count("CUT_PLUNGE") == 2 and "CUTTER_MODE" in gcode
+    preview = client.get(f"/api/jobs/{job['id']}/preview.svg")
+    assert (
+        preview.headers["content-type"].startswith("image/svg+xml") and "<polyline" in preview.text
+    )
+
+
+def test_cut_design_too_big_fails_with_reason(env):
+    client = env[2]
+    r = client.post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "400"},
+        files={"file": ("big.svg", SVG_SQUARE)},
+    )
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "failed" and "knife can reach" in job["error"]
+
+
+def test_cut_design_rejects_gcode_and_gcode_rejects_svg(env):
+    client = env[2]
+    assert upload(client, "cut-design", name="a.gcode").status_code == 415
+    assert upload(client, "cut-gcode", text=SVG_SQUARE, name="a.svg").status_code == 415
+
+
+def test_cut_design_option_range(env):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "blade_offset": "-1"},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 422
+
+
+def test_converting_job_cannot_start_or_be_discarded(env, monkeypatch):
+    import threading
+
+    gate = threading.Event()
+    from triaina.cut import pipeline
+
+    real = pipeline.run
+
+    def slow(*a, **k):
+        gate.wait(5)
+        return real(*a, **k)
+
+    monkeypatch.setattr(pipeline, "run", slow)
+    client = env[2]
+    job = client.post(
+        "/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)}
+    ).json()
+    assert client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True}).status_code == 409
+    assert client.delete(f"/api/jobs/{job['id']}").status_code == 409
+    gate.set()
+    assert wait_state(client, job["id"])["state"] == "ready"
+
+
+def test_restart_fails_converting_jobs(tmp_path):
+    store = JobStore(tmp_path / "jobs.db")
+    job = store.create("cut-design", "a.svg")
+    store.update(job.id, state="converting")
+    assert store.recover() == 1 and store.get(job.id).state == "failed"
+
+
+def test_old_database_gets_summary_column(tmp_path):
+    import sqlite3
+
+    db = tmp_path / "jobs.db"
+    con = sqlite3.connect(db)
+    con.execute(
+        "CREATE TABLE jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL,"
+        " name TEXT NOT NULL, state TEXT NOT NULL, source TEXT NOT NULL DEFAULT '',"
+        " output TEXT NOT NULL DEFAULT '', remote_name TEXT NOT NULL DEFAULT '',"
+        " error TEXT NOT NULL DEFAULT '', created REAL NOT NULL, updated REAL NOT NULL)"
+    )
+    con.execute(
+        "INSERT INTO jobs (kind, name, state, created, updated)"
+        " VALUES ('print-gcode', 'a', 'done', 1, 1)"
+    )
+    con.commit()
+    con.close()
+    store = JobStore(db)
+    assert store.get(1).to_dict()["summary"] is None
+
+
+def test_blank_numeric_field_means_default(env):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "", "blade_offset": ""},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 201
+    assert wait_state(env[2], r.json()["id"])["summary"]["options"]["blade_offset"] == 0.25
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("width", "0"),
+        ("width", "-5"),
+        ("blade_offset", "3"),
+        ("weed", "25"),
+        ("cut_feed", "0"),
+        ("threshold", "300"),
+    ],
+)
+def test_cut_design_option_ranges(env, field, value):
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", field: value},
+        files={"file": ("a.svg", SVG_SQUARE)},
+    )
+    assert r.status_code == 422 and field in r.json()["detail"]
+
+
+def test_conversion_work_dir_removed(env):
+    cfg, _, client, _ = env
+    r = client.post("/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)})
+    job = wait_state(client, r.json()["id"])
+    job_dir = cfg.paths.data_dir / "jobs" / str(job["id"])
+    assert job_dir.is_dir() and not (job_dir / "work").exists()
+    assert (job_dir / "preview.svg").is_file()
+
+
+def test_discard_frees_files(env):
+    cfg, _, client, _ = env
+    job = upload(client, "print-gcode").json()
+    job_dir = cfg.paths.data_dir / "jobs" / str(job["id"])
+    assert job_dir.is_dir()
+    out = client.delete(f"/api/jobs/{job['id']}").json()
+    assert out["state"] == "cancelled" and out["has_output"] is False and not job_dir.exists()
+    assert client.get(f"/api/jobs/{job['id']}/output").status_code == 404
+
+
+def test_finished_job_files_can_be_deleted(env):
+    cfg, printer, client, app = env
+    job = upload(client, "print-gcode").json()
+    client.post(f"/api/jobs/{job['id']}/start", json={"confirm": True})
+    printer.state = "complete"
+    app.state.monitor.poll_once()
+    assert client.get(f"/api/jobs/{job['id']}").json()["state"] == "done"
+    out = client.delete(f"/api/jobs/{job['id']}").json()
+    assert out["state"] == "done" and out["has_output"] is False
+
+
+def test_knife_area_from_limits_and_offset():
+    from triaina.web.app import knife_area
+
+    cfg = Config()
+    snap = {
+        "online": True,
+        "axis_minimum": [-2, -3, -2, 0],
+        "axis_maximum": [235, 230, 265, 0],
+        "knife_offset": [32, -5],
+    }
+    area, warning = knife_area(cfg, snap)
+    # Nozzle = knife + offset must stay in [min, max]; knife must stay on the bed.
+    assert area == (0.0, 2.0, 203.0, 225.0) and warning is None
+    area, warning = knife_area(cfg, {"online": False})
+    assert area == (0.0, 0.0, 225.0, 225.0) and "not checked" in warning
+
+
+def test_design_out_of_knife_reach_is_refused(env):
+    """200 mm wide fits the 225 mm bed but not the knife: nozzle would hit X 237."""
+    svg = SVG_SQUARE.replace('width="40mm"', 'width="40mm"')
+    r = env[2].post(
+        "/api/jobs",
+        data={"kind": "cut-design", "width": "200"},
+        files={"file": ("wide.svg", svg)},
+    )
+    job = wait_state(env[2], r.json()["id"])
+    assert job["state"] == "failed" and "knife can reach" in job["error"]
+
+
+def test_offline_design_warns_area_unchecked(env):
+    _, printer, client, _ = env
+    printer.online = False
+    r = client.post("/api/jobs", data={"kind": "cut-design"}, files={"file": ("a.svg", SVG_SQUARE)})
+    job = wait_state(client, r.json()["id"])
+    assert job["state"] == "ready"
+    assert any("not checked" in w for w in job["summary"]["warnings"])
+
+
+def test_cut_gcode_out_of_reach_is_refused(env):
+    # X 220 is on the bed but the nozzle would be at 252 with the 32 mm offset.
+    r = upload(env[2], "cut-gcode", "G90\nG0 X10 Y10\nM3\nG1 X220 Y10 F600\nM5\n")
+    assert r.json()["state"] == "failed" and "knife can reach" in r.json()["error"]
+
+
+def test_cut_gcode_in_reach_has_size_summary(env):
+    job = upload(env[2], "cut-gcode", "G90\nG0 X10 Y10\nM3\nG1 X60 Y30 F600\nM5\n").json()
+    assert job["state"] == "ready"
+    assert job["summary"]["width_mm"] == 50.0 and job["summary"]["warnings"] == []
