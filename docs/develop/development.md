@@ -13,6 +13,9 @@ cd triaina
 behaviour is in `scripts/project.sh`. `make` targets do the same things for
 anyone without the submodule: `make install test lint format docs docs-serve dist clean`.
 
+Run `make docs-serve` to preview the documentation. It uses the first free
+port from 8000 through 8010 and prints the local URL, including `/triaina/`.
+
 ## Layout
 
 | Path | What |
