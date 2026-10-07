@@ -33,7 +33,6 @@ docs: ## build the docs site into site/
 	$(PY) -m mkdocs build --strict
 
 docs-serve: ## preview docs on the first free port from 8000 through 8010
-	$(PY) -m pip install --quiet -r requirements-docs.txt
 	bash scripts/docs_serve.sh
 
 dist: ## build dist/triaina-<tag>.tar.gz

@@ -20,6 +20,9 @@ if [[ ! -x $python ]]; then
   echo "no usable Python at $python. Run: ./dev install" >&2
   exit 1
 fi
+
+"$python" -m pip install --quiet -r "$root_dir/requirements-docs.txt"
+
 for port in $(seq 8000 8010); do
   if "$python" -c '
 import socket
