@@ -15,6 +15,8 @@ anyone without the submodule: `make install test lint format docs docs-serve dis
 
 Run `make docs-serve` to preview the documentation. It uses the first free
 port from 8000 through 8010 and prints the local URL, including `/triaina/`.
+Run `./scripts/docs_serve.sh` directly after `./dev install`; pass a Python
+path only to use a different virtual environment.
 
 ## Layout
 
