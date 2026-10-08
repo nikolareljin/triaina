@@ -7,7 +7,7 @@ triaina — Giving your Neptune 4 its proper Greek trident so it can slice vinyl
 ## One Neptune 4. Two tools. One Raspberry Pi 3 control host.
 
 <p align="center">
-  <img src="assets/triaina-product.jpeg" alt="triaina product setup: Neptune 4 with drag-knife holder, Raspberry Pi 3 and Ethernet switch" width="100%">
+  <img src="docs/assets/img/triaina-product.jpeg" alt="triaina product setup: Neptune 4 with drag-knife holder, Raspberry Pi 3 and Ethernet switch" width="100%">
 </p>
 
 Turn an ELEGOO Neptune 4 (Klipper) into both an FDM printer and a drag-knife
@@ -54,7 +54,7 @@ https://nikolareljin.github.io/triaina/name/
 | `scripts/mode_switch.py` | Switch modes over Moonraker or OctoPrint |
 | `scripts/setup_pi.sh` | Pi provisioning: packages and venv |
 | `assets/logo.svg` | Logo |
-| `assets/triaina-product.jpeg` | Product photo shown at the top of this README |
+| `docs/assets/img/triaina-product.jpeg` | Product photo shown at the top of this README and the documentation site |
 
 The CLI scripts use only the standard library; the service needs FastAPI and
 uvicorn (`pyproject.toml`).

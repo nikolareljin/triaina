@@ -9,6 +9,11 @@ triaina turns an ELEGOO Neptune 4 into a two-in-one machine: a normal FDM
 printer and a drag-knife vinyl cutter. A Raspberry Pi 3 Model B prepares cut
 files and switches modes.
 
+<figure class="diagram" markdown>
+![triaina product setup: Neptune 4 with drag-knife holder, Raspberry Pi 3 and Ethernet switch](assets/img/triaina-product.jpeg)
+<figcaption>The Neptune 4 prints and cuts. The Raspberry Pi 3 prepares jobs and controls the workflow.</figcaption>
+</figure>
+
 !!! info "Why 'triaina'?"
     *Triaina* is Greek for **trident**, Poseidon's three-pronged spear. The printer
     is a **Neptune** 4, and Neptune is simply Poseidon under the name the Romans
