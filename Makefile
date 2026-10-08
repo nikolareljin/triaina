@@ -32,9 +32,8 @@ docs: ## build the docs site into site/
 	$(PY) -m pip install --quiet -r requirements-docs.txt
 	$(PY) -m mkdocs build --strict
 
-docs-serve: ## preview docs on http://127.0.0.1:8000
-	$(PY) -m pip install --quiet -r requirements-docs.txt
-	$(PY) -m mkdocs serve
+docs-serve: ## preview docs on the first free port from 8000 through 8010
+	bash scripts/docs_serve.sh
 
 dist: ## build dist/triaina-<tag>.tar.gz
 	rm -rf $(DIST) $(DIST).tar.gz

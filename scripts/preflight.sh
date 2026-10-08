@@ -62,7 +62,8 @@ run_check "bash -n setup_pi.sh" bash -n scripts/setup_pi.sh
 
 if command -v shellcheck >/dev/null 2>&1; then
   run_check "shellcheck" shellcheck -S warning scripts/setup_pi.sh scripts/preflight.sh \
-    scripts/project.sh scripts/check-private-names.sh scripts/check-changelog.sh
+    scripts/project.sh scripts/check-private-names.sh scripts/check-changelog.sh \
+    scripts/docs_serve.sh
 else
   log_warn "preflight: shellcheck not installed; CI will run it"
 fi

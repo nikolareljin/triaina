@@ -4,8 +4,27 @@
 
 triaina — Giving your Neptune 4 its proper Greek trident so it can slice vinyl stickers at 1000 mm/s². 🔱⚔️
 
-Run an ELEGOO Neptune 4 (Klipper) as both an FDM printer and a drag-knife vinyl
-cutter, with a Raspberry Pi 3 Model B as the companion host.
+## One Neptune 4. Two tools. One Raspberry Pi 3 control host.
+
+<p align="center">
+  <img src="docs/assets/img/triaina-product.jpeg" alt="triaina product setup: Neptune 4 with drag-knife holder, Raspberry Pi 3 and Ethernet switch" width="100%">
+</p>
+
+Turn an ELEGOO Neptune 4 (Klipper) into both an FDM printer and a drag-knife
+vinyl cutter. A Raspberry Pi 3 Model B runs the dashboard, prepares jobs and
+talks to the printer over Ethernet.
+
+| You provide | triaina provides |
+|---|---|
+| ELEGOO Neptune 4 and a Raspberry Pi 3 | Print jobs, vinyl-cut jobs, a browser dashboard, mode-safe Klipper macros and setup guides |
+
+The dashboard makes the active tool explicit before a job starts. A cut job
+switches to cutter mode; a print job switches back to printer mode.
+
+<p align="center">
+  <img src="docs/assets/img/neptune4.svg" alt="ELEGOO Neptune 4 configured with a printed drag-knife holder" width="48%">
+  <img src="docs/assets/img/pi3b.svg" alt="Raspberry Pi 3 Model B that runs the triaina dashboard" width="48%">
+</p>
 
 **Full documentation: https://nikolareljin.github.io/triaina/** (wiring
 diagrams, parts list with store links, setup and calibration).
@@ -35,6 +54,7 @@ https://nikolareljin.github.io/triaina/name/
 | `scripts/mode_switch.py` | Switch modes over Moonraker or OctoPrint |
 | `scripts/setup_pi.sh` | Pi provisioning: packages and venv |
 | `assets/logo.svg` | Logo |
+| `docs/assets/img/triaina-product.jpeg` | Product photo shown at the top of this README and the documentation site |
 
 The CLI scripts use only the standard library; the service needs FastAPI and
 uvicorn (`pyproject.toml`).
