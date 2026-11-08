@@ -1,5 +1,6 @@
 """Tests for triaina.convert. Fixtures are built in the test, no binary files."""
 
+import pathlib
 import shutil
 
 import pytest
@@ -154,6 +155,24 @@ def test_eps(tmp_path):
     )
     d = load(write(tmp_path, "a.eps", eps), tmp_path / "w")
     assert size(d)[0] == pytest.approx(25.4, abs=0.6)
+
+
+@pytest.mark.parametrize("width", ["200", "200pt"])
+def test_pdf_svg_size_with_and_without_units(tmp_path, monkeypatch, width):
+    # poppler 24 writes width="200" (points); poppler 26 writes width="200pt".
+    # A 72 pt square must come out as 25.4 mm either way.
+    import triaina.convert.pdf as pdf_mod
+
+    def fake_tool(cmd, label):
+        pathlib.Path(cmd[-1]).write_text(
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{width}"'
+            ' viewBox="0 0 200 200"><path d="M 10 10 L 82 10 L 82 82 L 10 82 Z"/></svg>'
+        )
+
+    monkeypatch.setattr(pdf_mod, "run_tool", fake_tool)
+    (tmp_path / "w").mkdir()
+    d = pdf_mod.load_pdf(write(tmp_path, "a.pdf", b"%PDF-1.4\n"), tmp_path / "w")
+    assert size(d) == (pytest.approx(25.4, abs=0.1), pytest.approx(25.4, abs=0.1))
 
 
 # -- PNG / JPG -----------------------------------------------------------------

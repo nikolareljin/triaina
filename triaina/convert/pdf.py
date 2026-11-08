@@ -6,6 +6,8 @@ Only the first page is used.
 
 from __future__ import annotations
 
+import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from triaina.convert import ConversionError, Design, run_tool
@@ -42,8 +44,20 @@ def load_pdf(path: Path, work_dir: Path, eps: bool = False) -> Design:
             ) from exc
         raise
     design = load_svg(svg)
-    # pdftocairo writes unitless sizes that are PDF points (cairo convention);
-    # load_svg read them as CSS px. 1 pt = 96/72 px.
-    k = 96.0 / 72.0
-    design.paths = [[(x * k, y * k) for x, y in p] for p in design.paths]
+    if not _has_units(svg):
+        # Older cairo writes unitless sizes that are PDF points; load_svg read
+        # them as CSS px. 1 pt = 96/72 px. Newer cairo writes "pt" itself, and
+        # load_svg already converted those.
+        k = 96.0 / 72.0
+        design.paths = [[(x * k, y * k) for x, y in p] for p in design.paths]
     return design
+
+
+def _has_units(svg: Path) -> bool:
+    """True when the root width carries a unit (for example "200pt")."""
+    try:
+        width = ET.parse(svg).getroot().get("width", "")
+    except ET.ParseError:
+        return False
+    width = width.strip()
+    return bool(width) and re.fullmatch(r"[\d.eE+-]+", width) is None
